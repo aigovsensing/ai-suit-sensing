@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+# 생성되는 변경 제안 산출물 (이슈별 휘발성)
+proposals/*.json
+proposals/*.md
+!proposals/.gitkeep

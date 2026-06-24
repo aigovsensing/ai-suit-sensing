@@ -1,0 +1,31 @@
+# TBA-Analyzer 설정
+
+# 정본 CSV 가 저장되는 디렉터리 (dashboard 가 읽는 위치)
+data_dir: "../dashboard/data"
+
+# tracker 가 생성하는 GitHub Issue 식별 정보
+github:
+  owner: "aigovsensing"
+  repo: "ai-suit-sensing"
+  issue_label: "ai-lawsuit-monitor"
+  # 분석 대상 이슈 상태 (open / closed / all)
+  issue_state: "all"
+
+# 동일 소송 매칭 설정
+matching:
+  # 사건명 퍼지 매칭 임계값 (0~100). 도켓번호가 없을 때만 사용.
+  fuzzy_threshold: 88
+  # 이 값 미만의 confidence 는 절대 자동 승인하지 않고 사람 검토로 보냄
+  auto_accept_min_confidence: 0.95
+
+# LLM 추출 설정
+llm:
+  enabled: true
+  model: "gemini-1.5-flash"
+  # API 키는 환경변수 GEMINI_API_KEY 로 주입
+
+# tracker 의 사건 보강 규칙 재사용
+known_cases_path: "../tracker/data/known_cases.yml"
+
+# 변경 제안(proposal) 저장 위치
+proposals_dir: "./proposals"

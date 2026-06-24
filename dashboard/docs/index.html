@@ -1,0 +1,848 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Litigation Dashboard - Global AI Lawsuit Monitoring & Analysis</title>
+    <meta name="description" content="AI Litigation Dashboard is a professional analysis platform that collects and visualizes global AI-related lawsuit data in real-time.">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* --- Header & Nav --- */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 0;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--light);
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray);
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .nav-links a:hover {
+            color: var(--light);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-links a.active {
+            color: var(--light);
+        }
+
+        .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .lang-switch {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.3s;
+            margin-left: 1rem;
+        }
+
+        .lang-switch:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .demo-link {
+            color: var(--secondary) !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.3rem 0.8rem;
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .demo-link:hover {
+            background: var(--secondary);
+            color: white !important;
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .btn-github {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--light);
+            padding: 0.5rem 1.2rem;
+            border-radius: 99px;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .btn-github:hover {
+            background: var(--light);
+            color: var(--dark);
+        }
+
+        /* --- Hero Section --- */
+        .hero {
+            padding: 10rem 0 6rem;
+            position: relative;
+            text-align: center;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80%;
+            height: 120%;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(15, 23, 42, 0) 70%);
+            z-index: -1;
+        }
+
+        .hero-badge {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            padding: 0.5rem 1.5rem;
+            border-radius: 99px;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-bottom: 2rem;
+            display: inline-block;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .hero h1 {
+            font-size: 4.5rem;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to bottom, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--gray);
+            max-width: 800px;
+            margin: 0 auto 3rem;
+        }
+
+        .hero-btns {
+            display: flex;
+            justify-content: center;
+            gap: 1.5rem;
+        }
+
+        .btn-primary {
+            background: var(--gradient);
+            color: #fff;
+            padding: 1rem 2.5rem;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.4);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px -5px rgba(99, 102, 241, 0.6);
+        }
+
+        /* --- Featured Video/Image --- */
+        .hero-mockup {
+            margin-top: 4rem;
+            perspective: 1000px;
+        }
+
+        .mockup-container {
+            background: var(--glass);
+            padding: 0.5rem;
+            border-radius: 20px;
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transform: rotateX(5deg);
+            max-width: 1000px;
+            margin: 0 auto;
+            overflow: hidden;
+        }
+
+        .mockup-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 15px;
+            display: block;
+        }
+
+        /* --- Stats Section --- */
+        .stats-ticker {
+            background: rgba(15, 23, 42, 0.5);
+            border-top: 1px solid var(--glass-border);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1.5rem 0;
+            margin: 4rem 0;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .ticker-content {
+            display: flex;
+            gap: 4rem;
+            animation: scroll 40s linear infinite;
+            width: max-content;
+        }
+
+        @keyframes scroll {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-weight: 600;
+            color: var(--gray);
+        }
+
+        .ticker-item span {
+            color: var(--primary);
+        }
+
+        /* --- Features Section --- */
+        .features {
+            padding: 8rem 0;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 5rem;
+        }
+
+        .section-header h2 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .section-header p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 2.5rem;
+            border-radius: 24px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--primary);
+            background: rgba(255, 255, 255, 0.05);
+            transform: translateY(-10px);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: var(--primary);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #fff;
+            box-shadow: 0 8px 16px -4px rgba(99, 102, 241, 0.4);
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--gray);
+        }
+
+        /* --- Showcase Section --- */
+        .showcase {
+            padding: 8rem 0;
+            background: rgba(30, 41, 59, 0.3);
+        }
+
+        .showcase-row {
+            display: flex;
+            align-items: center;
+            gap: 4rem;
+            margin-bottom: 8rem;
+        }
+
+        .showcase-row:nth-child(even) {
+            flex-direction: row-reverse;
+        }
+
+        .showcase-content {
+            flex: 1;
+        }
+
+        .showcase-content h3 {
+            font-size: 2.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--light);
+        }
+
+        .showcase-content p {
+            color: var(--gray);
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .feature-list i {
+            color: var(--primary);
+        }
+
+        .showcase-image {
+            flex: 1.2;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px -10px rgba(0,0,0,0.4);
+            border: 1px solid var(--glass-border);
+        }
+
+        .showcase-image img {
+            width: 100%;
+            height: auto;
+            transition: transform 0.5s;
+        }
+
+        .showcase-image:hover img {
+            transform: scale(1.05);
+        }
+
+        /* --- Architecture --- */
+        .tech-stack {
+            padding: 8rem 0;
+            text-align: center;
+        }
+
+        .stack-grid {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 3rem;
+            margin-top: 4rem;
+        }
+
+        .stack-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .stack-icon {
+            font-size: 3rem;
+            color: var(--gray);
+            transition: color 0.3s;
+        }
+
+        .stack-item:hover .stack-icon {
+            color: var(--primary);
+        }
+
+        /* --- Quick Start --- */
+        .quick-start {
+            padding: 8rem 0;
+        }
+
+        .code-block {
+            background: #020617;
+            padding: 2rem;
+            border-radius: 16px;
+            border: 1px solid var(--glass-border);
+            font-family: 'Monaco', 'Consolas', monospace;
+            position: relative;
+            max-width: 800px;
+            margin: 3rem auto 0;
+            text-align: left;
+        }
+
+        .code-header {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot.red { background: #ff5f56; }
+        .dot.yellow { background: #ffbd2e; }
+        .dot.green { background: #27c93f; }
+
+        .code-content {
+            color: #94a3b8;
+        }
+
+        .code-content span.cmd { color: #818cf8; }
+        .code-content span.comment { color: #475569; }
+
+        /* --- Footer --- */
+        footer {
+            padding: 6rem 0 3rem;
+            border-top: 1px solid var(--glass-border);
+            background: #020617;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr;
+            gap: 4rem;
+            margin-bottom: 4rem;
+        }
+
+        .footer-logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            display: block;
+        }
+
+        .footer-desc {
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+
+        .footer-links h4 {
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .footer-links ul {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.75rem;
+        }
+
+        .footer-links a {
+            text-decoration: none;
+            color: var(--gray);
+            transition: color 0.3s;
+        }
+
+        .footer-links a:hover {
+            color: var(--primary);
+        }
+
+        .copyright {
+            text-align: center;
+            color: var(--gray);
+            padding-top: 3rem;
+            border-top: 1px solid rgba(255,255,255,0.05);
+            font-size: 0.875rem;
+        }
+
+        /* --- Mobile --- */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 3rem; }
+            .nav-links { display: none; }
+            .showcase-row { flex-direction: column !important; }
+            .footer-grid { grid-template-columns: 1fr; gap: 2rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="container nav-content">
+            <a href="index.html" class="logo">
+                <i class="fas fa-shield-halved"></i> AI Litigation Dashboard
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="active">Home</a>
+                <a href="user_guide.html">User Guide</a>
+                <a href="api_guide.html">API Guide</a>
+                <a href="https://github.com/aigovsensing/ai-suit-dashboard" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="http://mymate.mooo.com:8007/" target="_blank" class="demo-link">DEMO</a>
+                <a href="#" class="lang-switch">EN</a>
+            </div>
+        </div>
+    </nav>
+
+    <section class="hero">
+        <div class="container">
+            <span class="hero-badge">v1.5 Stable Release</span>
+            <h1>Analyze Global AI Lawsuits<br>With Intelligence</h1>
+            <p>인공지능 소송 데이터 실시간 수집 및 다차원 시각화 전문 플랫폼. 법적 리스크와 트렌드를 데이터 기반으로 추적하고 Gemini AI를 통해 심층 분석 보고서를 생성합니다.</p>
+            <div class="hero-btns">
+                <a href="#start" class="btn-primary">Get Started Now</a>
+                <a href="#showcase" class="btn-github" style="padding: 1rem 2.5rem; border-radius: 12px;">View Preview</a>
+            </div>
+            
+            <div class="hero-mockup">
+                <div class="mockup-container">
+                    <img src="img/dashboard.png" alt="Dashboard Mockup">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="stats-ticker">
+        <div class="ticker-content">
+            <div class="ticker-item"><i class="fas fa-gavel"></i> Total Cases: <span>1,248+</span></div>
+            <div class="ticker-item"><i class="fas fa-building"></i> Top Defendant: <span>OpenAI</span></div>
+            <div class="ticker-item"><i class="fas fa-globe"></i> Active Regions: <span>US, EU, KR, CN</span></div>
+            <div class="ticker-item"><i class="fas fa-robot"></i> AI Analyzed Reports: <span>850+</span></div>
+            <!-- Duplicate for infinite scroll -->
+            <div class="ticker-item"><i class="fas fa-gavel"></i> Total Cases: <span>1,248+</span></div>
+            <div class="ticker-item"><i class="fas fa-building"></i> Top Defendant: <span>OpenAI</span></div>
+            <div class="ticker-item"><i class="fas fa-globe"></i> Active Regions: <span>US, EU, KR, CN</span></div>
+            <div class="ticker-item"><i class="fas fa-robot"></i> AI Analyzed Reports: <span>850+</span></div>
+        </div>
+    </div>
+
+    <section class="features" id="features">
+        <div class="container">
+            <div class="section-header">
+                <h2>핵심 기능 (Key Features)</h2>
+                <p>단순한 데이터 나열이 아닌, 법적 통찰력을 제공하는 강력한 도구들을 확인해보세요.</p>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-diagram-project"></i></div>
+                    <h3>Interactive Lineage</h3>
+                    <p>원고, 피고, 데이터셋 간의 복잡한 관계를 Cytoscape.js 기반의 고성능 리니지 그래프로 시각화합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-brain"></i></div>
+                    <h3>Gemini AI Analysis</h3>
+                    <p>Google Gemini AI를 연동하여 소송 데이터를 바탕으로 전문적인 법적 트렌드 월간 보고서를 자동 생성합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-earth-americas"></i></div>
+                    <h3>Global Heatmap</h3>
+                    <p>대륙별 줌인 기능과 연동된 인터랙티브 히트맵을 통해 전 세계 소송 분포를 한눈에 파악합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-magnifying-glass-chart"></i></div>
+                    <h3>Multi-dim Filtering</h3>
+                    <p>피고, 학습 데이터 분야, 진행 상태 등 다차원 필터링을 통해 필요한 정보를 즉시 필터링합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-bolt"></i></div>
+                    <h3>Real-time Tickers</h3>
+                    <p>최신 소송 현황과 주요 뉴스 정보를 실시간 티커를 통해 대시보드에 공급합니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon"><i class="fas fa-mobile-screen-button"></i></div>
+                    <h3>Responsive Design</h3>
+                    <p>데스크탑부터 모바일 기기까지 모든 환경에서 최적화된 시각화 레이아웃을 제공합니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="showcase" id="showcase">
+        <div class="container">
+            <div class="showcase-row">
+                <div class="showcase-content">
+                    <h3>인터랙티브 리니지 분석</h3>
+                    <p>소송의 주체와 객체 간의 관계를 그래프로 풀어냅니다. 특정 기술이나 기업이 어떤 법적 분쟁의 중심에 있는지 즉각적으로 식별할 수 있습니다.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check-circle"></i> 다중 피고 및 원고 관계 추적</li>
+                        <li><i class="fas fa-check-circle"></i> 데이터셋별 소송 집중도 분석</li>
+                        <li><i class="fas fa-check-circle"></i> 그래프 중심성 기반 리스크 감지</li>
+                    </ul>
+                </div>
+                <div class="showcase-image">
+                    <img src="img/lineage.png" alt="Lineage Graph">
+                </div>
+            </div>
+
+            <div class="showcase-row">
+                <div class="showcase-content">
+                    <h3>다양한 통계 대시보드</h3>
+                    <p>축적된 소송 데이터를 청구 내용, 국가, 피고 기업별로 집계하여 시각화합니다. 트렌드 차트를 통해 소송의 증가 추이를 분석하세요.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check-circle"></i> 청구 내용별 파이 차트</li>
+                        <li><i class="fas fa-check-circle"></i> 연도별/월별 소송 트렌드 분석</li>
+                        <li><i class="fas fa-check-circle"></i> 실시간 상위 피고 기업 순위</li>
+                    </ul>
+                </div>
+                <div class="showcase-image">
+                    <img src="img/api_docs.png" alt="Statistics View">
+                </div>
+            </div>
+
+            <div class="showcase-row">
+                <div class="showcase-content">
+                    <h3>정밀한 리스트 및 검색</h3>
+                    <p>수천 건의 소송 데이터를 빠르고 정확하게 검색합니다. 상세 모달을 통해 판결문 요약 및 관련 뉴스에 즉시 접근할 수 있습니다.</p>
+                    <ul class="feature-list">
+                        <li><i class="fas fa-check-circle"></i> 고속 전문(Full-text) 검색 엔진</li>
+                        <li><i class="fas fa-check-circle"></i> 진행 상태별 스마트 배지 시스템</li>
+                        <li><i class="fas fa-check-circle"></i> CSV v2.1 규격 완벽 호환</li>
+                    </ul>
+                </div>
+                <div class="showcase-image">
+                    <img src="img/case_list.png" alt="Case List View">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="tech-stack" id="architecture">
+        <div class="container">
+            <div class="section-header">
+                <h2>Modern Tech Stack</h2>
+                <p>안정적이고 빠른 성능을 위해 검증된 기술들을 사용합니다.</p>
+            </div>
+            
+            <div class="stack-grid">
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fab fa-python"></i></div>
+                    <strong>FastAPI</strong>
+                </div>
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fab fa-react"></i></div>
+                    <strong>React 18</strong>
+                </div>
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fas fa-database"></i></div>
+                    <strong>MariaDB</strong>
+                </div>
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fab fa-js"></i></div>
+                    <strong>Vanilla JS</strong>
+                </div>
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fab fa-docker"></i></div>
+                    <strong>Docker</strong>
+                </div>
+                <div class="stack-item">
+                    <div class="stack-icon"><i class="fas fa-microchip"></i></div>
+                    <strong>Gemini AI</strong>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="quick-start" id="start">
+        <div class="container">
+            <div class="section-header">
+                <h2>Quick Start</h2>
+                <p>Docker를 사용하여 단 몇 초 만에 대시보드를 실행해보세요.</p>
+            </div>
+
+            <div class="code-block">
+                <div class="code-header">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                </div>
+                <div class="code-content">
+                    <span class="comment"># Clone the repository</span><br>
+                    <span class="cmd">git clone</span> https://github.com/aigovsensing/ai-suit-dashboard.git<br>
+                    <span class="cmd">cd</span> ai-suit-dashboard<br><br>
+                    <span class="comment"># Run with Docker Compose</span><br>
+                    <span class="cmd">docker-compose</span> -f docker/docker-compose.yml up -d<br><br>
+                    <span class="comment"># Access the dashboard at http://localhost:8007</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer>
+        <div class="container">
+            <div class="footer-grid">
+                <div>
+                    <a href="#" class="footer-logo logo">AI Litigation Dashboard</a>
+                    <p class="footer-desc">전 세계 AI 소송의 흐름을 파악하고 대응할 수 있는 혁신적인 분석 대시보드를 제공합니다.</p>
+                </div>
+                <div class="footer-links">
+                    <h4>Resources</h4>
+                    <ul>
+                        <li><a href="index.html">Home</a></li>
+                        <li><a href="api_guide.html">API Guide</a></li>
+                        <li><a href="user_guide.html">User Guide</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Community</h4>
+                    <ul>
+                        <li><a href="#">GitHub Issues</a></li>
+                        <li><a href="#">Discussions</a></li>
+                        <li><a href="#">Roadmap</a></li>
+                    </ul>
+                </div>
+                <div class="footer-links">
+                    <h4>Legal</h4>
+                    <ul>
+                        <li><a href="#">Privacy Policy</a></li>
+                        <li><a href="#">Terms of Use</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="copyright">
+                &copy; 2026 AI Litigation Dashboard Team. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Add glass effect on scroll
+        window.addEventListener('scroll', () => {
+            const nav = document.querySelector('nav');
+            if (window.scrollY > 50) {
+                nav.style.boxShadow = '0 10px 30px -10px rgba(0,0,0,0.5)';
+            } else {
+                nav.style.boxShadow = 'none';
+            }
+        });
+    </script>
+</body>
+</html>

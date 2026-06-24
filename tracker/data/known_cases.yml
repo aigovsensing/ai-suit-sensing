@@ -1,0 +1,22 @@
+- match:
+    any:
+      - "Bartz"
+      - "Anthropic"
+      - "Project Panama"
+  enrich:
+    country: "미국"
+    court: "U.S. District Court, Northern District of California"
+    case_title: "Bartz et al. v. Anthropic PBC"
+    case_number: "3:24-cv-05417"
+
+- match:
+    any:
+      - "TED ENTERTAINMENT"
+      - "Snap Inc"
+      - "Imagine Lens"
+      - "2:26-cv-00754"
+  enrich:
+    country: "미국"
+    court: "U.S. District Court, Central District of California"
+    case_title: "TED ENTERTAINMENT, INC et al v. Snap Inc."
+    case_number: "2:26-cv-00754"

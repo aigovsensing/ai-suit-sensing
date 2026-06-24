@@ -1,0 +1,78 @@
+name: tba-analyzer
+
+# 검토 방식 A (GitHub PR 기반):
+#   analyze → 후보 CSV 생성 → 브랜치 커밋 → PR 자동 생성
+#   사람이 PR을 merge 하면 정본 CSV 반영(accept), close 하면 미반영(reject).
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: read
+
+on:
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "분석할 최근 이슈 수"
+        default: "3"
+  # 필요 시 스케줄 활성화 (기본은 수동 실행만)
+  # schedule:
+  #   - cron: "0 1 * * *"  # 매일 KST 10:00
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tba-analyzer
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run analyzer
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        run: |
+          python -m src.run analyze --limit "${{ github.event.inputs.limit || '3' }}" --write-candidate
+
+      - name: Create Pull Request if changes proposed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          LAST=proposals/last_run.json
+          if [ ! -f "$LAST" ]; then echo "no last_run.json"; exit 0; fi
+          HAS=$(python -c "import json;print(json.load(open('$LAST'))['has_changes'])")
+          if [ "$HAS" != "True" ]; then echo "변경 제안 없음 → PR 생략"; exit 0; fi
+
+          # last_run.json 의 경로는 절대경로이므로 그대로 사용
+          STAMP=$(python -c "import json;print(json.load(open('$LAST'))['stamp'])")
+          NEW=$(python -c "import json;print(json.load(open('$LAST'))['new'])")
+          UPD=$(python -c "import json;print(json.load(open('$LAST'))['update'])")
+          MD=$(python -c "import json;print(json.load(open('$LAST'))['markdown'])")
+          CSV=$(python -c "import json;print(json.load(open('$LAST'))['candidate_csv'])")
+
+          BRANCH="tba/analyzer-${STAMP}"
+          cd "$GITHUB_WORKSPACE"  # repo root
+          git config user.name "tba-analyzer[bot]"
+          git config user.email "tba-analyzer@users.noreply.github.com"
+          git checkout -b "$BRANCH"
+          git add "$CSV"
+          git commit -m "data: tba-analyzer 제안 (NEW ${NEW}/UPDATE ${UPD}) [${STAMP}]"
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --title "🤖 소송 데이터 갱신 제안 (NEW ${NEW}/UPDATE ${UPD}) — ${STAMP}" \
+            --body-file "$MD" \
+            --base main --head "$BRANCH" \
+            --label "tba-analyzer"

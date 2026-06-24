@@ -1,0 +1,23 @@
+
+version: '3'
+services:
+  mariadb:
+    image: mariadb:10.6
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: ai_lawsuits
+    ports:
+      - "13306:3306"
+    volumes:
+      - ./database:/docker-entrypoint-initdb.d
+
+  backend:
+    image: python:3.10
+    working_dir: /app
+    volumes:
+      - ..:/app
+    command: bash -c "apt-get update && apt-get install -y git && pip install -r requirements.txt && uvicorn backend.main:app --host 0.0.0.0 --port 8007"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    ports:
+      - "8007:8007"

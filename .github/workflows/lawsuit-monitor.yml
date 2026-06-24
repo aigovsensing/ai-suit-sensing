@@ -1,0 +1,74 @@
+name: lawsuit-monitor
+permissions:
+  contents: write
+  issues: write
+
+on:
+  schedule:
+    - cron: "0 23,0-8 * * *" # Business hours (KST 08:00-17:00, UTC 23:00-08:00) every 1 hour
+    - cron: "0 9-21/3 * * *" # Off-business hours (KST 18:00-06:00, UTC 09:00-21:00) every 3 hours
+  workflow_dispatch: {}
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # 모노레포 통합: 모든 run 스텝을 tracker/ 하위 프로젝트 기준으로 실행
+        working-directory: tracker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run monitor
+        env:
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          GITHUB_TOKEN: ${{ github.token }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          COURTLISTENER_TOKEN: ${{ secrets.COURTLISTENER_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # Gemini 동향 요약 기능 활성화 여부 및 기간 (값이 있으면 활성화)
+          GEMINI_AISUIT_TREND_DAYS: ${{ vars.GEMINI_AISUIT_TREND_DAYS || secrets.GEMINI_AISUIT_TREND_DAYS }}
+          # 이전 이슈 중복 제거 범위 (일수)
+          PREVIOUS_ITEM_DEDUP_DAYS: ${{ vars.PREVIOUS_ITEM_DEDUP_DAYS }}
+          # 기본값(코드 내 default) = 3일
+          # Actions → Variables에 LOOKBACK_DAYS를 만들면 2 등으로 쉽게 조정 가능
+          LOOKBACK_DAYS: ${{ vars.LOOKBACK_DAYS }}
+          # 도켓 후보 Top3 표기(0/1). Actions → Variables에 SHOW_DOCKET_CANDIDATES 설정 가능
+          SHOW_DOCKET_CANDIDATES: ${{ vars.SHOW_DOCKET_CANDIDATES }}
+          # (옵션) 긴 셀(도켓 후보/최근 업데이트)을 <details>로 접기
+          COLLAPSE_LONG_CELLS: ${{ vars.COLLAPSE_LONG_CELLS }}
+          # (옵션) 기사 주소 섹션을 <details>로 접기
+          COLLAPSE_ARTICLE_URLS: ${{ vars.COLLAPSE_ARTICLE_URLS }}
+
+          ISSUE_TITLE_BASE: "AI 소송 모니터링"
+          ISSUE_LABEL: "ai-lawsuit-monitor"
+          # (옵션) 지브리 스타일 이미지 리포트 생성 활성화 (1: 활성화)
+          GEMINI_DAILY_REPORT_IMAGEGEN: ${{ vars.GEMINI_DAILY_REPORT_IMAGEGEN || secrets.GEMINI_DAILY_REPORT_IMAGEGEN }}
+          # 디버그 모드(0/1). Actions -> Variables에 DEBUG=1 설정 시 활성화
+          DEBUG: ${{ vars.DEBUG }}
+          # 이메일 전송 활성화 (1: 활성화, 0: 비활성화)
+          ENABLE_EMAIL_SENDER: ${{ vars.ENABLE_EMAIL_SENDER || '0' }}
+          # 이메일 발송용 SMTP 앱 비밀번호
+          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
+        run: |
+          python -m src.run
+
+      - name: Commit and Push Image
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add docs/img/daily_visual_report.png || true
+          git commit -m "chore: update daily visual report image [skip ci]" || echo "No changes to commit"
+          git push origin main || echo "Push failed or no changes"

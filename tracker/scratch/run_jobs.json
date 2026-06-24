@@ -1,0 +1,105 @@
+﻿{
+    "total_count":  1,
+    "jobs":  [
+                 {
+                     "id":  82477286817,
+                     "run_id":  27868831792,
+                     "workflow_name":  "lawsuit-monitor",
+                     "head_branch":  "main",
+                     "run_url":  "https://api.github.com/repos/aigovsensing/ai-suit-tracker-v02/actions/runs/27868831792",
+                     "run_attempt":  1,
+                     "node_id":  "CR_kwDOR0TKT88AAAATNAeFoQ",
+                     "head_sha":  "16ce8f782a45c3c7a226abb6b72576c0acc53201",
+                     "url":  "https://api.github.com/repos/aigovsensing/ai-suit-tracker-v02/actions/jobs/82477286817",
+                     "html_url":  "https://github.com/aigovsensing/ai-suit-tracker-v02/actions/runs/27868831792/job/82477286817",
+                     "status":  "completed",
+                     "conclusion":  "success",
+                     "created_at":  "2026-06-20T10:47:19Z",
+                     "started_at":  "2026-06-20T10:47:22Z",
+                     "completed_at":  "2026-06-20T10:53:03Z",
+                     "name":  "run",
+                     "steps":  [
+                                   {
+                                       "name":  "Set up job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  1,
+                                       "started_at":  "2026-06-20T10:47:23Z",
+                                       "completed_at":  "2026-06-20T10:47:24Z"
+                                   },
+                                   {
+                                       "name":  "Checkout",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  2,
+                                       "started_at":  "2026-06-20T10:47:24Z",
+                                       "completed_at":  "2026-06-20T10:47:25Z"
+                                   },
+                                   {
+                                       "name":  "Set up Python",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  3,
+                                       "started_at":  "2026-06-20T10:47:25Z",
+                                       "completed_at":  "2026-06-20T10:47:25Z"
+                                   },
+                                   {
+                                       "name":  "Install deps",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  4,
+                                       "started_at":  "2026-06-20T10:47:25Z",
+                                       "completed_at":  "2026-06-20T10:47:37Z"
+                                   },
+                                   {
+                                       "name":  "Run monitor",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  5,
+                                       "started_at":  "2026-06-20T10:47:37Z",
+                                       "completed_at":  "2026-06-20T10:52:59Z"
+                                   },
+                                   {
+                                       "name":  "Commit and Push Image",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  6,
+                                       "started_at":  "2026-06-20T10:52:59Z",
+                                       "completed_at":  "2026-06-20T10:53:00Z"
+                                   },
+                                   {
+                                       "name":  "Post Set up Python",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  11,
+                                       "started_at":  "2026-06-20T10:53:00Z",
+                                       "completed_at":  "2026-06-20T10:53:00Z"
+                                   },
+                                   {
+                                       "name":  "Post Checkout",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  12,
+                                       "started_at":  "2026-06-20T10:53:00Z",
+                                       "completed_at":  "2026-06-20T10:53:00Z"
+                                   },
+                                   {
+                                       "name":  "Complete job",
+                                       "status":  "completed",
+                                       "conclusion":  "success",
+                                       "number":  13,
+                                       "started_at":  "2026-06-20T10:53:00Z",
+                                       "completed_at":  "2026-06-20T10:53:00Z"
+                                   }
+                               ],
+                     "check_run_url":  "https://api.github.com/repos/aigovsensing/ai-suit-tracker-v02/check-runs/82477286817",
+                     "labels":  [
+                                    "ubuntu-latest"
+                                ],
+                     "runner_id":  1000000870,
+                     "runner_name":  "GitHub Actions 1000000870",
+                     "runner_group_id":  0,
+                     "runner_group_name":  "GitHub Actions"
+                 }
+             ]
+}

@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Guide - AI Litigation Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* --- Header & Nav --- */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 0;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--light);
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray);
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--light);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after, .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .lang-switch {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .lang-switch:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .demo-link {
+            color: var(--secondary) !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.3rem 0.8rem;
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .demo-link:hover {
+            background: var(--secondary);
+            color: white !important;
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* --- Content Section --- */
+        .content-section {
+            padding: 8rem 0 6rem;
+        }
+
+        .guide-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .guide-header h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(to bottom, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .guide-body {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 24px;
+        }
+
+        .guide-body h3 {
+            font-size: 1.5rem;
+            margin-top: 3rem;
+            margin-bottom: 1rem;
+            color: var(--primary);
+        }
+
+        .guide-body h3:first-child {
+            margin-top: 0;
+        }
+
+        .endpoint-card {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .method {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 0.875rem;
+            margin-right: 0.5rem;
+            background: #10b981;
+            color: #fff;
+        }
+
+        .method.post { background: #3b82f6; }
+
+        .url {
+            font-family: 'Monaco', monospace;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        .description {
+            margin-top: 1rem;
+            color: var(--gray);
+        }
+
+        code {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #ec4899;
+        }
+
+        pre {
+            background: #020617;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border: 1px solid var(--glass-border);
+        }
+
+        pre code {
+            color: #94a3b8;
+            background: none;
+            padding: 0;
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--glass-border);
+            margin: 3rem 0;
+        }
+
+        /* --- Footer --- */
+        footer {
+            padding: 4rem 0;
+            border-top: 1px solid var(--glass-border);
+            background: #020617;
+            text-align: center;
+        }
+
+        .copyright {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        /* --- Mobile --- */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .guide-header h1 { font-size: 2.5rem; }
+            .guide-body { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="container nav-content">
+            <a href="index.html" class="logo">
+                <i class="fas fa-shield-halved"></i> AI Litigation Dashboard
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="user_guide_en.html">User Guide</a>
+                <a href="api_guide_en.html" class="active">API Guide</a>
+                <a href="https://github.com/aigovsensing/ai-suit-dashboard" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="http://mymate.mooo.com:8007/" target="_blank" class="demo-link">DEMO</a>
+                <a href="api_guide.html" class="lang-switch">KO</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="content-section">
+        <div class="container">
+            <header class="guide-header">
+                <h1>API Guide</h1>
+                <p>Technical details for the REST API endpoints available in the AI Litigation Dashboard.</p>
+            </header>
+
+            <article class="guide-body">
+                <h3>1. Data Retrieval Endpoints</h3>
+                
+                <div class="endpoint-card">
+                    <span class="method">GET</span> <span class="url">/api/files</span>
+                    <p class="description">Returns a list of available CSV datasets in the <code>./data</code> directory, sorted by name descending (latest first).</p>
+                    <pre><code>// Response Example
+["aisuit_20260429_1700.csv", "aisuit_20260414.csv"]</code></pre>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="method">GET</span> <span class="url">/api/cases</span>
+                    <p class="description">The main endpoint to fetch litigation data. It can load a specific CSV file or fetch real-time data from the CourtListener API.</p>
+                    <p style="font-size:0.9rem; margin-top:0.5rem"><strong>Params:</strong> <code>file_name</code> (optional)</p>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="method">GET</span> <span class="url">/api/version</span>
+                    <p class="description">Returns the current application version based on git tags and commit hash.</p>
+                </div>
+
+                <hr>
+
+                <h3>2. Analysis & Statistics Endpoints</h3>
+
+                <div class="endpoint-card">
+                    <span class="method">GET</span> <span class="url">/api/statistics</span>
+                    <p class="description">Returns aggregated statistics for dashboard visualization (claims, defendants, countries, status, etc.).</p>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="method post">POST</span> <span class="url">/api/report/generate</span>
+                    <p class="description">Triggers AI analysis using Gemini to generate a professional monthly trend report.</p>
+                    <pre><code>// Payload
+{
+  "type": "filing_date",
+  "month": "2026-05"
+}</code></pre>
+                </div>
+
+                <div class="endpoint-card">
+                    <span class="method post">POST</span> <span class="url">/api/report/download</span>
+                    <p class="description">Converts Markdown report content into a Word (<code>.docx</code>) file for download.</p>
+                </div>
+
+                <hr>
+
+                <h3>3. Static Paths</h3>
+                <ul style="list-style:none; color: var(--gray)">
+                    <li style="margin-bottom:0.5rem"><code>/css/*</code>: Stylesheets</li>
+                    <li style="margin-bottom:0.5rem"><code>/js/*</code>: JavaScript files</li>
+                    <li style="margin-bottom:0.5rem"><code>/img/*</code>: SVG maps and images</li>
+                    <li style="margin-bottom:0.5rem"><code>/manual/*</code>: System documentation (MD)</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="copyright">
+                &copy; 2026 AI Litigation Dashboard Team. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

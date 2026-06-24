@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>전 세계 AI 규제 타임라인 2019–2030</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700;800&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#13181F; --ink-soft:#1C232C; --paper:#F3F4F6; --panel:#FFFFFF;
+    --line:#E3E5EA; --line-soft:#EDEEF1; --text:#1A1F26; --muted:#666E7A; --faint:#9AA1AC;
+    --intl:#4338CA;  /* 국제기구 */
+    --eu:#1366B0;    /* 유럽연합 */
+    --na:#C1440E;    /* 북미 */
+    --asia:#0E7C66;  /* 아시아 */
+    --sa:#B27013;    /* 남미 */
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--text);
+    font-family:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 20px;}
+
+  /* ---- Masthead ---- */
+  header{background:var(--ink); color:#EDEFF2;}
+  .masthead{max-width:980px; margin:0 auto; padding:44px 20px 38px;}
+  .kicker{
+    font-family:"Space Mono",monospace; font-size:12px; letter-spacing:.22em;
+    text-transform:uppercase; color:#8C95A3; margin:0 0 18px;
+  }
+  .masthead h1{
+    font-family:"Archivo",sans-serif; font-weight:800; font-size:clamp(30px,5.6vw,52px);
+    line-height:1.04; letter-spacing:-.02em; margin:0 0 16px; color:#FBFCFD;
+  }
+  .masthead p.lede{
+    max-width:62ch; font-size:16px; color:#B9C0CB; margin:0 0 28px;
+  }
+  .stats{display:flex; flex-wrap:wrap; gap:28px 40px; border-top:1px solid #2A323D; padding-top:24px;}
+  .stat .num{font-family:"Space Mono",monospace; font-weight:700; font-size:20px; color:#FBFCFD; letter-spacing:-.01em;}
+  .stat .lbl{font-size:12.5px; color:#8C95A3; margin-top:2px;}
+
+  /* ---- Controls ---- */
+  .controls{position:sticky; top:0; z-index:20; background:rgba(243,244,246,.92);
+    backdrop-filter:blur(8px); border-bottom:1px solid var(--line); padding:14px 0;}
+  .controls .wrap{display:flex; flex-wrap:wrap; gap:16px 28px; align-items:center;}
+  .filter-group{display:flex; flex-wrap:wrap; gap:7px; align-items:center;}
+  .filter-group .glabel{font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--faint); margin-right:4px;}
+  .pill{
+    font-size:13px; font-weight:500; border:1px solid var(--line); background:var(--panel);
+    color:var(--muted); padding:5px 12px; border-radius:999px; cursor:pointer; line-height:1.3;
+    transition:border-color .15s, color .15s, background .15s;
+  }
+  .pill:hover{border-color:var(--faint); color:var(--text);}
+  .pill[aria-pressed="true"]{background:var(--ink); color:#fff; border-color:var(--ink);}
+  .pill .swatch{display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; vertical-align:middle;}
+
+  /* ---- Timeline ---- */
+  main{padding:36px 0 60px;}
+  .yeargroup{margin-bottom:8px;}
+  .yearhead{
+    position:sticky; top:60px; z-index:10; display:flex; align-items:baseline; gap:14px;
+    padding:18px 0 12px; background:linear-gradient(var(--paper) 70%, rgba(243,244,246,0));
+  }
+  .yearhead .y{font-family:"Space Mono",monospace; font-weight:700; font-size:34px; letter-spacing:-.02em; color:var(--ink);}
+  .yearhead .count{font-size:12.5px; color:var(--faint); font-family:"Space Mono",monospace;}
+
+  .entry{display:grid; grid-template-columns:108px 1fr; gap:18px; position:relative;
+    padding:14px 0 14px 0; border-left:none;}
+  .rail{display:flex; flex-direction:column; align-items:flex-end; padding-right:18px; position:relative;}
+  .rail::before{content:""; position:absolute; right:-1px; top:0; bottom:0; width:2px; background:var(--line);}
+  .entry:first-of-type .rail::before{top:10px;}
+  .date{font-family:"Space Mono",monospace; font-size:13px; color:var(--muted); white-space:nowrap; padding-top:1px;}
+  .dot{position:absolute; right:-7px; top:7px; width:12px; height:12px; border-radius:50%;
+    background:var(--panel); border:3px solid var(--faint);}
+
+  .card{background:var(--panel); border:1px solid var(--line); border-left:4px solid var(--faint);
+    border-radius:var(--radius); padding:14px 18px; transition:box-shadow .15s, transform .15s;}
+  .card:hover{box-shadow:0 4px 18px rgba(20,25,32,.07);}
+  .meta{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:6px;}
+  .juris{font-family:"Archivo",sans-serif; font-weight:700; font-size:13px; letter-spacing:.01em;}
+  .type{font-size:11.5px; font-family:"Space Mono",monospace; letter-spacing:.04em; color:var(--muted);
+    border:1px solid var(--line); border-radius:5px; padding:1px 7px;}
+  .card h3{font-family:"Archivo",sans-serif; font-weight:600; font-size:16px; line-height:1.35; margin:0 0 4px; color:var(--ink);}
+  .card p{margin:0; font-size:13.5px; color:var(--muted);}
+
+  /* region coding */
+  .r-intl .dot{border-color:var(--intl);} .r-intl .card{border-left-color:var(--intl);} .r-intl .juris{color:var(--intl);}
+  .r-eu .dot{border-color:var(--eu);}     .r-eu .card{border-left-color:var(--eu);}     .r-eu .juris{color:var(--eu);}
+  .r-na .dot{border-color:var(--na);}     .r-na .card{border-left-color:var(--na);}     .r-na .juris{color:var(--na);}
+  .r-asia .dot{border-color:var(--asia);} .r-asia .card{border-left-color:var(--asia);} .r-asia .juris{color:var(--asia);}
+  .r-sa .dot{border-color:var(--sa);}     .r-sa .card{border-left-color:var(--sa);}     .r-sa .juris{color:var(--sa);}
+
+  /* today marker */
+  .today{display:grid; grid-template-columns:108px 1fr; gap:18px; padding:10px 0;}
+  .today .rail{position:relative;}
+  .today .rail::before{content:""; position:absolute; right:-1px; top:0; bottom:0; width:2px; background:var(--line);}
+  .today .marker{align-self:center; display:flex; align-items:center; gap:12px;}
+  .today .pulse{width:14px; height:14px; border-radius:50%; background:var(--ink); margin-left:-8px; flex:none;
+    box-shadow:0 0 0 5px rgba(19,24,31,.12);}
+  .today .label{font-family:"Space Mono",monospace; font-weight:700; font-size:14px; color:var(--ink);}
+
+  .entry.hidden,.yeargroup.hidden{display:none;}
+  .fut .card{border-left-style:dashed; background:#FAFAF6;}
+  .fut .dot{border-style:dashed; background:var(--paper);}
+  .type.sched{color:#8a5a00; border:1px solid #e7d2a6; border-style:dashed; border-radius:5px; padding:1px 7px; font-family:"Space Mono",monospace; font-size:11px;}
+  .type.proj{color:var(--muted); border:1px dashed var(--line); border-radius:5px; padding:1px 7px; font-family:"Space Mono",monospace; font-size:11px; font-style:italic;}
+
+  footer{border-top:1px solid var(--line); padding:26px 0 48px; color:var(--muted); font-size:12.5px;}
+  footer a{color:var(--muted);}
+  footer .note{max-width:70ch;}
+
+  @media (max-width:680px){
+    .entry,.today{grid-template-columns:74px 1fr; gap:10px;}
+    .rail{padding-right:12px;} .date{font-size:11.5px;}
+    .yearhead .y{font-size:26px;}
+    .yearhead{top:58px;}
+  }
+  @media (prefers-reduced-motion:no-preference){
+    .entry{opacity:0; transform:translateY(8px); animation:rise .5s ease forwards;}
+  }
+  @keyframes rise{to{opacity:1; transform:none;}}
+  :focus-visible{outline:2px solid var(--eu); outline-offset:2px; border-radius:4px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="masthead">
+    <p class="kicker">Global AI Regulation · 2019 → 2030</p>
+    <h1>전 세계 AI 규제 타임라인</h1>
+    <p class="lede">국제기구의 원칙 선언에서 시작해, 구속력 있는 국가법과 세계 최초의 AI 국제조약, 그리고 미국의 주별·연방 충돌까지 — AI 거버넌스가 "문서 위의 원칙"에서 "집행되는 현실"로 옮겨온 흐름을 한눈에.</p>
+    <div class="stats">
+      <div class="stat"><div class="num">2019–2030</div><div class="lbl">수록 기간</div></div>
+      <div class="stat"><div class="num">2024.09</div><div class="lbl">첫 구속력 국제조약 (유럽평의회)</div></div>
+      <div class="stat"><div class="num">~2030.12</div><div class="lbl">EU AI법 단계적 적용 완료</div></div>
+      <div class="stat"><div class="num">2027</div><div class="lbl">한국 벌칙·캘리포니아 ADMT 시행</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="wrap">
+    <div class="filter-group" id="region-filters">
+      <span class="glabel">지역</span>
+      <button class="pill" data-region="all" aria-pressed="true">전체</button>
+      <button class="pill" data-region="intl" aria-pressed="false"><span class="swatch" style="background:var(--intl)"></span>국제기구</button>
+      <button class="pill" data-region="eu" aria-pressed="false"><span class="swatch" style="background:var(--eu)"></span>유럽연합</button>
+      <button class="pill" data-region="na" aria-pressed="false"><span class="swatch" style="background:var(--na)"></span>북미</button>
+      <button class="pill" data-region="asia" aria-pressed="false"><span class="swatch" style="background:var(--asia)"></span>아시아</button>
+      <button class="pill" data-region="sa" aria-pressed="false"><span class="swatch" style="background:var(--sa)"></span>남미</button>
+    </div>
+    <div class="filter-group" id="type-filters">
+      <span class="glabel">유형</span>
+      <button class="pill" data-type="all" aria-pressed="true">전체</button>
+      <button class="pill" data-type="law" aria-pressed="false">구속력 법령</button>
+      <button class="pill" data-type="treaty" aria-pressed="false">국제조약</button>
+      <button class="pill" data-type="soft" aria-pressed="false">프레임워크·선언</button>
+      <button class="pill" data-type="proposal" aria-pressed="false">제안·초안</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap" id="timeline">
+
+  <!-- 2019 -->
+  <section class="yeargroup" data-year="2019">
+    <div class="yearhead"><span class="y">2019</span><span class="count"></span></div>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">05월</time></div>
+      <div class="card"><div class="meta"><span class="juris">OECD · 국제</span><span class="type">원칙</span></div>
+        <h3>OECD AI 권고 원칙 채택</h3>
+        <p>최초의 정부간 AI 표준. 이후 G20가 채택하며 사실상의 글로벌 기준점이 됨.</p></div>
+    </article>
+  </section>
+
+  <!-- 2021 -->
+  <section class="yeargroup" data-year="2021">
+    <div class="yearhead"><span class="y">2021</span><span class="count"></span></div>
+    <article class="entry r-eu" data-region="eu" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">04월</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">제안</span></div>
+        <h3>집행위, EU AI법 초안 발표</h3>
+        <p>위험 기반(unacceptable·high·limited·minimal) 4단계 분류를 처음 제시.</p></div>
+    </article>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">11월</time></div>
+      <div class="card"><div class="meta"><span class="juris">UNESCO · 국제</span><span class="type">권고</span></div>
+        <h3>AI 윤리 권고 채택</h3>
+        <p>193개 회원국이 채택한 첫 글로벌 AI 윤리 규범.</p></div>
+    </article>
+  </section>
+
+  <!-- 2022 -->
+  <section class="yeargroup" data-year="2022">
+    <div class="yearhead"><span class="y">2022</span><span class="count"></span></div>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">03월</time></div>
+      <div class="card"><div class="meta"><span class="juris">중국</span><span class="type">시행</span></div>
+        <h3>알고리즘 추천 관리규정 시행</h3>
+        <p>추천 알고리즘 등록제 도입 — 세계에서 가장 이른 구속력 AI 규제 중 하나.</p></div>
+    </article>
+  </section>
+
+  <!-- 2023 -->
+  <section class="yeargroup" data-year="2023">
+    <div class="yearhead"><span class="y">2023</span><span class="count"></span></div>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01월</time></div>
+      <div class="card"><div class="meta"><span class="juris">중국</span><span class="type">시행</span></div>
+        <h3>딥합성(深度合成) 규정 시행</h3>
+        <p>딥페이크·합성미디어 생성·표시 의무 규제.</p></div>
+    </article>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.15</time></div>
+      <div class="card"><div class="meta"><span class="juris">중국</span><span class="type">시행</span></div>
+        <h3>생성형 AI 잠정관리방법 시행</h3>
+        <p>세계 첫 구속력 있는 생성형 AI 전용 규제. 알고리즘 등록·콘텐츠 책임·안전심사 부과.</p></div>
+    </article>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">10월</time></div>
+      <div class="card"><div class="meta"><span class="juris">G7 · 국제</span><span class="type">행동강령</span></div>
+        <h3>히로시마 AI 프로세스 국제 행동강령</h3>
+        <p>첨단 AI 개발사를 겨냥한 자발적 국제 행동강령 합의.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">10.30</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 연방</span><span class="type">행정명령</span></div>
+        <h3>바이든 AI 행정명령(EO 14110)</h3>
+        <p>안전·보안·신뢰 AI를 위한 연방 차원 지침. 2025년 1월 트럼프가 폐지.</p></div>
+    </article>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">11월</time></div>
+      <div class="card"><div class="meta"><span class="juris">영국 · 국제</span><span class="type">정상회의</span></div>
+        <h3>블레츨리 AI 안전 정상회의 · 선언</h3>
+        <p>28개국+EU의 프론티어 AI 안전 공동선언. 영국 AI 안전연구소 설립.</p></div>
+    </article>
+  </section>
+
+  <!-- 2024 -->
+  <section class="yeargroup" data-year="2024">
+    <div class="yearhead"><span class="y">2024</span><span class="count"></span></div>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">03.21</time></div>
+      <div class="card"><div class="meta"><span class="juris">UN · 국제</span><span class="type">결의</span></div>
+        <h3>UN 총회, 첫 글로벌 AI 결의 채택</h3>
+        <p>안전하고 신뢰할 수 있는 AI에 관한 첫 만장일치 총회 결의.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">05.17</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 콜로라도</span><span class="type">제정</span></div>
+        <h3>콜로라도 AI법(SB 24-205) 서명</h3>
+        <p>미국 첫 포괄적 고위험 AI법(용도 기반 차별방지). 이후 후퇴·대체됨.</p></div>
+    </article>
+    <article class="entry r-eu" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">발효</span></div>
+        <h3>EU AI법 발효</h3>
+        <p>세계 첫 포괄적 수평 AI 규제. 2025–2030 단계적 적용 개시.</p></div>
+    </article>
+    <article class="entry r-intl" data-region="intl" data-type="treaty">
+      <div class="rail"><span class="dot"></span><time class="date">09.05</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽평의회 · 국제</span><span class="type">조약</span></div>
+        <h3>AI 기본협약 서명 개방</h3>
+        <p>세계 첫 구속력 있는 AI 국제조약. EU·미국·영국 등 초기 서명. (5월 채택)</p></div>
+    </article>
+    <article class="entry r-sa" data-region="sa" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">12월</time></div>
+      <div class="card"><div class="meta"><span class="juris">브라질</span><span class="type">상원 통과</span></div>
+        <h3>브라질 AI 법안(PL 2338/2023) 상원 통과</h3>
+        <p>위험 기반·LGPD 연계. 하원 심의 중, 2026년 시행 목표.</p></div>
+    </article>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">12.26</time></div>
+      <div class="card"><div class="meta"><span class="juris">대한민국</span><span class="type">국회 통과</span></div>
+        <h3>AI 기본법 국회 통과</h3>
+        <p>19개 AI 법안을 통합한 단일 프레임워크. EU 다음 두 번째 포괄 AI 국가법.</p></div>
+    </article>
+  </section>
+
+  <!-- 2025 -->
+  <section class="yeargroup" data-year="2025">
+    <div class="yearhead"><span class="y">2025</span><span class="count"></span></div>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.21</time></div>
+      <div class="card"><div class="meta"><span class="juris">대한민국</span><span class="type">공포</span></div>
+        <h3>AI 기본법 공포 — 1년 준비기간 시작</h3>
+        <p>고영향·생성형 AI 투명성·영향평가, 국내대리인 지정 등. 시행 2026.01.22.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">01월</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 연방</span><span class="type">행정명령</span></div>
+        <h3>트럼프, 바이든 AI 행정명령 폐지</h3>
+        <p>규제 완화·혁신 우선 기조로 전환.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">01월</time></div>
+      <div class="card"><div class="meta"><span class="juris">캐나다</span><span class="type">폐기</span></div>
+        <h3>AIDA(C-27 법안) 자동 폐기</h3>
+        <p>의회 정회(prorogation)로 캐나다의 연방 AI법안 무산.</p></div>
+    </article>
+    <article class="entry r-eu" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">02.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">적용</span></div>
+        <h3>금지(unacceptable) AI 관행 적용</h3>
+        <p>사회적 점수화·실시간 원격 생체인식 등 금지 조항 발효.</p></div>
+    </article>
+    <article class="entry r-intl" data-region="intl" data-type="soft">
+      <div class="rail"><span class="dot"></span><time class="date">02월</time></div>
+      <div class="card"><div class="meta"><span class="juris">프랑스 · 국제</span><span class="type">정상회의</span></div>
+        <h3>파리 AI 행동 정상회의</h3>
+        <p>블레츨리·서울을 잇는 글로벌 AI 거버넌스 정상회의.</p></div>
+    </article>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">05.28</time></div>
+      <div class="card"><div class="meta"><span class="juris">일본</span><span class="type">제정</span></div>
+        <h3>AI 추진법 제정</h3>
+        <p>"가장 AI 친화적 국가"를 표방한 혁신 우선·경량 규제. 벌칙 최소화.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">06.22</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 텍사스</span><span class="type">제정</span></div>
+        <h3>텍사스 TRAIGA(HB 149) 서명</h3>
+        <p>미국 3번째 포괄법. 고위험 틀 대신 금지행위 중심으로 경량화. 2026.01.01 발효.</p></div>
+    </article>
+    <article class="entry r-eu" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">적용</span></div>
+        <h3>범용 AI(GPAI) 의무 적용</h3>
+        <p>시스템 리스크 GPAI 기준 10²⁵ FLOP. 투명성·문서화 의무 개시.</p></div>
+    </article>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">09.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">중국</span><span class="type">시행</span></div>
+        <h3>AI 생성 콘텐츠 라벨링 규정 시행</h3>
+        <p>명시·암시 라벨 의무화(메타데이터 포함). 플랫폼 식별·고지 의무.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">09.29</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type">제정</span></div>
+        <h3>캘리포니아 SB 53(TFAIA) 서명</h3>
+        <p>미국 첫 프론티어 AI 안전·투명성법. 프론티어 모델 기준 10²⁶ FLOP.</p></div>
+    </article>
+    <article class="entry r-eu" data-region="eu" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">11.19</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">제안</span></div>
+        <h3>Digital Omnibus 제안</h3>
+        <p>고위험 의무 적용 연기·간소화 추진.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">12.19</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 뉴욕</span><span class="type">제정</span></div>
+        <h3>뉴욕 RAISE법 서명</h3>
+        <p>미국 2번째 프론티어 안전법. 72시간 내 안전사고 보고 의무. 2027.01.01 발효.</p></div>
+    </article>
+  </section>
+
+  <!-- 2026 -->
+  <section class="yeargroup" data-year="2026">
+    <div class="yearhead"><span class="y">2026</span><span class="count"></span></div>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 다수 주</span><span class="type">발효</span></div>
+        <h3>CA·TX·IL 등 주(州) AI법 발효</h3>
+        <p>CA SB 53·AB 2013, TX TRAIGA, IL 고용 AI법 등 동시 시행.</p></div>
+    </article>
+    <article class="entry r-asia" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.22</time></div>
+      <div class="card"><div class="meta"><span class="juris">대한민국</span><span class="type">시행</span></div>
+        <h3>AI 기본법 시행</h3>
+        <p>고영향 AI 영향평가·인적감독·생성형 AI 고지. 벌칙 조항은 1년 유예.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">04.27</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 콜로라도</span><span class="type">집행정지</span></div>
+        <h3>법원, 콜로라도 AI법 집행 정지</h3>
+        <p>AG 규칙제정 완료 전까지 정지. DOJ·xAI가 위헌 소송.</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">05.14</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 콜로라도</span><span class="type">대체법</span></div>
+        <h3>대체법 SB 26-189 서명</h3>
+        <p>위험관리·영향평가 폐기, 통지·투명성 중심으로 축소. 2027.01.01 시행 목표.</p></div>
+    </article>
+    <article class="entry r-eu" data-region="eu" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">05.07</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type">잠정합의</span></div>
+        <h3>Omnibus 잠정 합의 — 고위험 연기</h3>
+        <p>Annex III 고위험 의무를 2027.12.02로 연기(정식 채택 조건).</p></div>
+    </article>
+    <article class="entry r-na" data-region="na" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">06.04</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 연방</span><span class="type">토론초안</span></div>
+        <h3>'거대 미국 AI법' 초안 공개</h3>
+        <p>주(州) AI 개발 규제 3년 선점 + 대형개발자 반기 제3자 감사(269쪽).</p></div>
+    </article>
+
+    <div class="today" aria-label="오늘">
+      <div class="rail"></div>
+      <div class="marker"><span class="pulse"></span><span class="label">오늘 — 2026.06.10</span></div>
+    </div>
+
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type sched">예정</span></div>
+        <h3>캘리포니아 AI 투명성법(SB 942) 발효 예정</h3>
+        <p>월 100만+ 이용 서비스의 AI 생성 콘텐츠 표시 의무.</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>고위험 의무 원래 적용일</h3>
+        <p>Omnibus 정식 채택 시 연기, 미채택 시 그대로 발효.</p></div>
+    </article>
+  </section>
+
+  <!-- 2027 -->
+  <section class="yeargroup" data-year="2027">
+    <div class="yearhead"><span class="y">2027</span><span class="count"></span></div>
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · CO·NY</span><span class="type sched">예정</span></div>
+        <h3>콜로라도 SB 26-189 + 뉴욕 RAISE법 시행</h3>
+        <p>축소된 콜로라도 체계와 뉴욕 프론티어 안전법이 함께 발효.</p></div>
+    </article>
+    <article class="entry r-asia fut" data-region="asia" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.22</time></div>
+      <div class="card"><div class="meta"><span class="juris">대한민국</span><span class="type sched">예정</span></div>
+        <h3>AI 기본법 벌칙(과태료) 조항 시행</h3>
+        <p>1년 유예가 끝나고 고영향·생성형 AI 의무 위반에 대한 과태료 집행 개시.</p></div>
+    </article>
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.01~04.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type sched">예정</span></div>
+        <h3>CCPA 자동화 의사결정(ADMT) 의무 시행</h3>
+        <p>중대한 결정에 ADMT 사용 시 사전고지·옵트아웃·위험평가 의무(2027.1.1부터, 일부 4.1).</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>EU AI법 전면 적용 + GPAI 경과기한</h3>
+        <p>Annex I(규제제품 내장) 원래 적용일. 2025.8.2 이전 출시 GPAI 모델의 준수기한.</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">12.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>(Omnibus 채택 시) Annex III 고위험 적용</h3>
+        <p>연기된 새 기한. 채용·신용 등 단독형 고위험 시스템 의무 적용.</p></div>
+    </article>
+  </section>
+
+  <!-- 2028 -->
+  <section class="yeargroup" data-year="2028">
+    <div class="yearhead"><span class="y">2028</span><span class="count"></span></div>
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">04.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type sched">예정</span></div>
+        <h3>CCPA 사이버보안 감사·위험평가 1차 보고</h3>
+        <p>연매출 1억 달러 초과 기업의 첫 감사·위험평가 인증 제출 기한.</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>(Omnibus 채택 시) Annex I 제품 내장 고위험 적용 + 집행 평가</h3>
+        <p>규제제품에 내장된 고위험 AI 의무 적용. 집행위, AI법 집행 평가보고 단계.</p></div>
+    </article>
+  </section>
+
+  <!-- 2029 -->
+  <section class="yeargroup" data-year="2029">
+    <div class="yearhead"><span class="y">2029</span><span class="count"></span></div>
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">04.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type sched">예정</span></div>
+        <h3>CCPA 사이버보안 감사 2차(중견기업)</h3>
+        <p>2027년 연매출 5천만~1억 달러 기업의 첫 감사 기한.</p></div>
+    </article>
+    <article class="entry r-intl fut" data-region="intl" data-type="proposal">
+      <div class="rail"><span class="dot"></span><time class="date">전망</time></div>
+      <div class="card"><div class="meta"><span class="juris">국제 · 미국</span><span class="type proj">전망</span></div>
+        <h3>각국 포괄법 2차 정비·연방 입법 향방</h3>
+        <p>EU·한국 이후 일본·브라질·캐나다 등의 후속 입법과 미 연방 단일기준 논의가 분수령.</p></div>
+    </article>
+  </section>
+
+  <!-- 2030 -->
+  <section class="yeargroup" data-year="2030">
+    <div class="yearhead"><span class="y">2030</span><span class="count"></span></div>
+    <article class="entry r-na fut" data-region="na" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">01.01</time></div>
+      <div class="card"><div class="meta"><span class="juris">미국 · 캘리포니아</span><span class="type sched">예정</span></div>
+        <h3>CCPA 사이버보안 감사 3차(소규모)</h3>
+        <p>2028년 연매출 5천만 달러 미만 기업의 첫 감사 기한 — ADMT 체계 단계 적용 완료.</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">08.02</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>공공기관 사용 고위험 AI 준수기한</h3>
+        <p>2026.8 이전 출시·공공기관이 운영하는 고위험 시스템의 최종 준수 기한.</p></div>
+    </article>
+    <article class="entry r-eu fut" data-region="eu" data-type="law">
+      <div class="rail"><span class="dot"></span><time class="date">12.31</time></div>
+      <div class="card"><div class="meta"><span class="juris">유럽연합</span><span class="type sched">예정</span></div>
+        <h3>대규모 IT 시스템(Annex X) 구성 AI 준수기한</h3>
+        <p>솅겐정보시스템 등 대규모 IT 시스템에 내장된 기존 AI의 최종 정합 기한 — AI법 적용 사실상 완성.</p></div>
+    </article>
+  </section>
+
+  </div>
+</main>
+
+<footer>
+  <div class="wrap">
+    <p class="note"><strong>예정·전망 안내</strong> — 2026~2030년 '예정' 항목(점선)은 EU AI법 단계별 적용일, 캘리포니아 ADMT·감사 일정, 한국 벌칙 시행 등 법령에 명시된 실제 일정이며 입법·사법 변화로 바뀔 수 있습니다(특히 EU 고위험 적용일, 미 연방 선점 법안). '전망' 항목은 확정 일정이 아닌 예측입니다.</p>
+    <p class="note">랜드마크 입법·조약·정책을 선별해 정리했습니다. 미국은 50개 주(워싱턴 D.C. 포함 51개 관할) 전부가 AI 법안을 발의했고 100건 이상이 제정됐으나, 여기서는 포괄·프론티어급 대표 법과 연방 동향만 표시했습니다.</p>
+    <p>작성 기준일 2026년 6월 10일.</p>
+  </div>
+</footer>
+
+<script>
+(function(){
+  var activeRegion="all", activeType="all";
+  var entries=Array.prototype.slice.call(document.querySelectorAll(".entry"));
+  var groups=Array.prototype.slice.call(document.querySelectorAll(".yeargroup"));
+
+  function apply(){
+    entries.forEach(function(el){
+      var rOK=(activeRegion==="all"||el.dataset.region===activeRegion);
+      var tOK=(activeType==="all"||el.dataset.type===activeType);
+      el.classList.toggle("hidden", !(rOK&&tOK));
+    });
+    groups.forEach(function(g){
+      var visible=g.querySelectorAll(".entry:not(.hidden)").length;
+      g.classList.toggle("hidden", visible===0);
+      var c=g.querySelector(".count");
+      if(c) c.textContent=visible+"건";
+    });
+  }
+  function wire(containerId, key){
+    var box=document.getElementById(containerId);
+    box.addEventListener("click", function(e){
+      var btn=e.target.closest(".pill"); if(!btn) return;
+      box.querySelectorAll(".pill").forEach(function(p){p.setAttribute("aria-pressed","false");});
+      btn.setAttribute("aria-pressed","true");
+      if(key==="region") activeRegion=btn.dataset.region; else activeType=btn.dataset.type;
+      apply();
+    });
+  }
+  wire("region-filters","region");
+  wire("type-filters","type");
+  apply();
+})();
+</script>
+</body>
+</html>

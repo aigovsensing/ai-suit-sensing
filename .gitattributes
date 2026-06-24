@@ -1,0 +1,2 @@
+# Ignore Windows Zone.Identifier alternate data streams
+*:Zone.Identifier:*DATA export-ignore

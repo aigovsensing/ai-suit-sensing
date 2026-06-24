@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Guide - AI Litigation Dashboard</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #ec4899;
+            --accent: #8b5cf6;
+            --dark: #0f172a;
+            --light: #f8fafc;
+            --gray: #64748b;
+            --glass: rgba(255, 255, 255, 0.03);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --gradient: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #ec4899 100%);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark);
+            color: var(--light);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4 {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* --- Header & Nav --- */
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--glass-border);
+            padding: 1rem 0;
+        }
+
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            text-decoration: none;
+            color: var(--light);
+            background: var(--gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--gray);
+            font-weight: 600;
+            transition: all 0.3s;
+            position: relative;
+            padding: 0.5rem 0;
+        }
+
+        .nav-links a:hover, .nav-links a.active {
+            color: var(--light);
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 0;
+            height: 2px;
+            background: var(--gradient);
+            transition: width 0.3s;
+        }
+
+        .nav-links a:hover::after, .nav-links a.active::after {
+            width: 100%;
+        }
+
+        .lang-switch {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            color: var(--light);
+            padding: 0.3rem 0.8rem;
+            border-radius: 99px;
+            font-size: 0.8rem;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        .lang-switch:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+
+        .demo-link {
+            color: var(--secondary) !important;
+            font-weight: 800 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            padding: 0.3rem 0.8rem;
+            border: 1px solid var(--secondary);
+            border-radius: 8px;
+            transition: all 0.3s ease;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+        }
+
+        .demo-link:hover {
+            background: var(--secondary);
+            color: white !important;
+            box-shadow: 0 0 15px rgba(236, 72, 153, 0.4);
+            transform: translateY(-1px);
+        }
+
+        /* --- Content Section --- */
+        .content-section {
+            padding: 8rem 0 6rem;
+        }
+
+        .guide-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .guide-header h1 {
+            font-size: 3.5rem;
+            background: linear-gradient(to bottom, #fff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 1rem;
+        }
+
+        .guide-body {
+            background: var(--glass);
+            border: 1px solid var(--glass-border);
+            padding: 3rem;
+            border-radius: 24px;
+        }
+
+        .guide-body h3 {
+            font-size: 1.75rem;
+            border-left: 4px solid var(--primary);
+            padding-left: 1rem;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .guide-body h3:first-child {
+            margin-top: 0;
+        }
+
+        .guide-body p {
+            font-size: 1.1rem;
+            color: var(--gray);
+            margin-bottom: 1.5rem;
+        }
+
+        .guide-body ul {
+            list-style: none;
+            margin-bottom: 2rem;
+        }
+
+        .guide-body li {
+            position: relative;
+            padding-left: 2rem;
+            margin-bottom: 1rem;
+            color: #cbd5e1;
+            font-size: 1.05rem;
+        }
+
+        .guide-body li::before {
+            content: '\f058';
+            font-family: 'Font Awesome 6 Free';
+            font-weight: 900;
+            position: absolute;
+            left: 0;
+            color: var(--primary);
+        }
+
+        .guide-body blockquote {
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            color: var(--primary);
+        }
+
+        hr {
+            border: 0;
+            border-top: 1px solid var(--glass-border);
+            margin: 3rem 0;
+        }
+
+        /* --- Footer --- */
+        footer {
+            padding: 4rem 0;
+            border-top: 1px solid var(--glass-border);
+            background: #020617;
+            text-align: center;
+        }
+
+        .copyright {
+            color: var(--gray);
+            font-size: 0.875rem;
+        }
+
+        /* --- Mobile --- */
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .guide-header h1 { font-size: 2.5rem; }
+            .guide-body { padding: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <nav>
+        <div class="container nav-content">
+            <a href="index.html" class="logo">
+                <i class="fas fa-shield-halved"></i> AI Litigation Dashboard
+            </a>
+            <div class="nav-links">
+                <a href="index.html">Home</a>
+                <a href="user_guide_en.html" class="active">User Guide</a>
+                <a href="api_guide_en.html">API Guide</a>
+                <a href="https://github.com/aigovsensing/ai-suit-dashboard" target="_blank">
+                    <i class="fab fa-github"></i> GitHub
+                </a>
+                <a href="http://mymate.mooo.com:8007/" target="_blank" class="demo-link">DEMO</a>
+                <a href="user_guide.html" class="lang-switch">KO</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="content-section">
+        <div class="container">
+            <header class="guide-header">
+                <h1>User Guide</h1>
+                <p>Detailed features and premium utilization methods of the AI Litigation Dashboard.</p>
+            </header>
+
+            <article class="guide-body">
+                <blockquote>
+                    <strong>App Goal:</strong> To track and visualize copyright and rights infringement lawsuits arising from AI companies training models using unauthorized data, providing real-time geographical and relational insights.
+                </blockquote>
+
+                <h3>1. 🚀 Data Loading & Visualization (Initial Setup)</h3>
+                <ul>
+                    <li><strong>Dataset Selection</strong>: Select a specific dataset from the <code>CSV Select</code> dropdown in the header to analyze a particular point in time.</li>
+                    <li><strong>Refresh Visualization</strong>: Before manually adjusting filters, click the <code>Update Map</code> button to synchronize the map and statistics with the latest data.</li>
+                </ul>
+
+                <hr>
+
+                <h3>2. 🗺 Interactive Map Navigation</h3>
+                <ul>
+                    <li><strong>Global Toggle</strong>: Instantly switch between <strong>USA (US)</strong> and <strong>Global (WORLD)</strong> maps via the <code>REGION</code> menu in the header.</li>
+                    <li><strong>High-Precision Zoom (Marquee Zoom)</strong>:
+                        <ul>
+                            <li style="margin-top:0.5rem"><strong>Shift + Drag</strong>: Draw a rectangle over a specific area to zoom in precisely to that region.</li>
+                            <li><strong>Mouse Wheel</strong>: Smoothly zoom in and out centered on your cursor position.</li>
+                        </ul>
+                    </li>
+                    <li><strong>Smart Tooltips</strong>: Hover over any region to immediately see its name and the number of active lawsuits filtered in real-time.</li>
+                </ul>
+
+                <hr>
+
+                <h3>3. 🎯 Advanced Multi-dimensional Filtering</h3>
+                <ul>
+                    <li><strong>Defendant Filter</strong>: Select a specific company (e.g., OpenAI, Meta, Google) to focus on litigation involving that entity.</li>
+                    <li><strong>Theme Filter</strong>: Filter by the data type involved in the lawsuit (e.g., Music, Visual Art, Code, Book) to identify industry-specific trends.</li>
+                    <li><strong>Multi-Status Filter</strong>: Select multiple progress statuses from the status dropdown to reflect them on the heatmap.</li>
+                </ul>
+
+                <hr>
+
+                <h3>4. 📈 Statistics & Trend Analysis</h3>
+                <ul>
+                    <li><strong>Litigation Trend</strong>: View monthly and yearly litigation frequency via the 'Litigation Trend' chart at the bottom of the <strong>[STATISTICS]</strong> menu.</li>
+                    <li><strong>Comprehensive Stats</strong>: Provides six core charts including claims, defendant market share, and court decisions.</li>
+                </ul>
+
+                <hr>
+
+                <h3>5. 🔍 High-Performance Case Search</h3>
+                <ul>
+                    <li><strong>Integrated Search</strong>: Enter keywords in the sidebar search box to simultaneously search across case titles, plaintiffs, defendants, and regional codes.</li>
+                    <li><strong>Result Listing</strong>: Matching lawsuits are listed as elegant cards; click any card to view detailed information immediately.</li>
+                </ul>
+
+                <hr>
+
+                <h3>6. 🔑 Key Status Definitions (Glossary)</h3>
+                <ul>
+                    <li><strong>Ready</strong>: Lawsuit filed, but detailed documents are not yet public.</li>
+                    <li><strong>Started</strong>: Official legal proceedings and discovery have commenced.</li>
+                    <li><strong>1st/2nd Instance</strong>: Trial ongoing in District or Higher Courts.</li>
+                    <li><strong>Decision</strong>: Final judgment rendered by the presiding court.</li>
+                    <li><strong>Appeal</strong>: Additional legal disputes ongoing following an appeal.</li>
+                    <li><strong>Closed</strong>: All proceedings finalized through judgment, settlement, or withdrawal.</li>
+                </ul>
+
+                <hr>
+
+                <h3>7. 🕸️ Lineage Graph Analysis</h3>
+                <p>An advanced visualization tool to understand the network between complex legal parties.</p>
+                <ul>
+                    <li><strong>Plaintiff/Defendant Tracking</strong>: Visually analyze the connections between parties.</li>
+                    <li><strong>Dataset Centric Analysis</strong>: Identify which lawsuits are linked to specific datasets.</li>
+                    <li><strong>Focus Mode</strong>: Select a target to filter the view to show only the direct litigation history and relationship network.</li>
+                </ul>
+            </article>
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <div class="copyright">
+                &copy; 2026 AI Litigation Dashboard Team. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

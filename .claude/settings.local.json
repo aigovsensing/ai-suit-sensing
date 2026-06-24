@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(unzip -l ai-suit-tracker-v02-main.zip)",
+      "Bash(awk '{print $4}')",
+      "Bash(unzip -l ai-suit-dashboard-main.zip)",
+      "Bash(unzip -q ai-suit-tracker-v02-main.zip -d _extract_tracker)",
+      "Bash(unzip -q ai-suit-dashboard-main.zip -d _extract_dashboard)",
+      "Bash(mv _extract_tracker/ai-suit-tracker-v02-main/* _extract_tracker/ai-suit-tracker-v02-main/.[!.]* tracker/)",
+      "Bash(mv _extract_dashboard/ai-suit-dashboard-main/* _extract_dashboard/ai-suit-dashboard-main/.[!.]* dashboard/)",
+      "Bash(git add *)",
+      "Bash(awk -F/ '{print $1}')",
+      "Bash(git commit -q -m ' *)",
+      "Bash(git ls-tree *)",
+      "Bash(git push *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)",
+      "Bash(git ls-remote *)",
+      "Bash(echo \"ls-remote exit=$?\")",
+      "Bash(git config *)",
+      "Bash(env)",
+      "Bash(GIT_CURL_VERBOSE=1 git -c http.postBuffer=524288000 push origin main)",
+      "Bash(GIT_TRACE_CURL=1 GIT_TRACE_CURL_NO_DATA=0 git push origin main)",
+      "Bash(awk '/403 Forbidden/{f=1} f')",
+      "Bash(cd /work/git-collect/ai-suit-sensing *)",
+      "Bash(git mv *)",
+      "Bash(python3 -c \"import yaml,sys; d=yaml.safe_load\\(open\\('.github/workflows/lawsuit-monitor.yml'\\)\\); print\\('YAML OK'\\); print\\('working-directory =', d['jobs']['run']['defaults']['run']['working-directory']\\)\")",
+      "Bash(awk -F',' '{print NF\" columns\"}')",
+      "Bash(python3 -m tests.test_csv_store)",
+      "Bash(python3 -m tests.test_pipeline)",
+      "Bash(python3 -c \"import sys; sys.path.insert\\(0,'.'\\); from src import csv_store as cs; o=cs.load\\('../dashboard/data/aisuit_20260624_1741.csv'\\); print\\('records:', len\\(o.records\\)\\); print\\('new rec No181 docket:', o.by_docket\\(\\).get\\('1:26-cv-99999',{}\\).get\\('No'\\)\\)\")",
+      "Bash(rm -rf proposals/*)",
+      "Bash(git reset *)"
+    ]
+  }
+}

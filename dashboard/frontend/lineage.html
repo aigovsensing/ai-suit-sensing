@@ -1,0 +1,1376 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Litigation Lineage Graph</title>
+    <!-- CDN Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js"></script>
+    <script src="https://unpkg.com/layout-base/layout-base.js"></script>
+    <script src="https://unpkg.com/cose-base/cose-base.js"></script>
+    <script src="https://unpkg.com/cytoscape-fcose/cytoscape-fcose.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dagre/0.8.5/dagre.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/papaparse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prop-types/15.8.1/prop-types.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/recharts/2.12.7/Recharts.min.js"></script>
+    <!-- Export Libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/cytoscape-svg@0.4.0/cytoscape-svg.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+            margin: 0;
+            overflow: hidden;
+        }
+        #cy {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        /* Dedicated Async Timer Styles - Using Compositor-Thread CSS Animation */
+        @property --t {
+            syntax: '<integer>';
+            initial-value: 0;
+            inherits: false;
+        }
+        #async-timer-value {
+            animation: tick 3600s steps(3600); /* 1 hour timer capacity */
+            counter-reset: t var(--t);
+            display: inline-block;
+            min-width: 1.5rem;
+        }
+        #async-timer-value::after {
+            content: counter(t);
+        }
+        @keyframes tick {
+            from { --t: 0; }
+            to { --t: 3600; }
+        }
+        #async-timer-container {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 3rem;
+            font-variant-numeric: tabular-nums;
+            font-weight: 700;
+            color: #60a5fa;
+            font-size: 1.25rem;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+        
+        // Safety check for Recharts - Try multiple global names
+        let RechartsLib = window.Recharts || window.recharts || (typeof Recharts !== 'undefined' ? Recharts : {});
+        if (RechartsLib.default) RechartsLib = RechartsLib.default;
+        
+        const { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } = RechartsLib;
+        
+        console.log("Recharts Library Status:", !!BarChart ? "Loaded" : "Not Found", RechartsLib);
+
+        // Constants
+        const NODE_COLORS = {
+            PLAINTIFF: '#3b82f6', // Blue
+            DEFENDANT: '#ef4444', // Red
+            DATASET: '#22c55e',   // Green
+            AI_PRODUCT: '#a855f7', // Purple
+            LAWSUIT: '#f97316'    // Orange
+        };
+
+        const EDGE_COLORS = {
+            FILED_BY: '#60a5fa',
+            SUED_IN: '#f87171',
+            INVOLVES_DATA: '#4ade80',
+            TARGETS_PRODUCT: '#c084fc',
+            DEVELOPED_BY: '#d8b4fe',
+            TRAINED_ON: '#86efac'
+        };
+
+        const LineageDashboard = () => {
+            const [data, setData] = useState([]);
+            const [files, setFiles] = useState([]);
+            const [selectedFile, setSelectedFile] = useState('');
+            const [selectedNode, setSelectedNode] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [loadingStep, setLoadingStep] = useState(1);
+            const [error, setError] = useState(null);
+            const [focusTarget, setFocusTarget] = useState(null); // { type, name }
+            const [stepDurations, setStepDurations] = useState({}); // { stepNum: duration }
+            const [isExporting, setIsExporting] = useState(false);
+            const [drilldown, setDrilldown] = useState({ open: false, title: '', items: [], page: 1 });
+            const stepStartTimeRef = useRef(Date.now());
+            const timerRef = useRef(null);
+            const startTimeRef = useRef(null);
+
+            // Auto-close countdown logic
+            useEffect(() => {
+                let interval = null;
+                if (autoCloseTimer !== null && autoCloseTimer > 0) {
+                    interval = setInterval(() => {
+                        setAutoCloseTimer(prev => prev - 1);
+                    }, 1000);
+                } else if (autoCloseTimer === 0) {
+                    setLoading(false);
+                    setAutoCloseTimer(null);
+                }
+                return () => { if (interval) clearInterval(interval); };
+            }, [autoCloseTimer]);
+
+            // Track step durations manually for maximum reliability
+            const recordStepDuration = (stepNum) => {
+                const now = Date.now();
+                const duration = ((now - stepStartTimeRef.current) / 1000).toFixed(1);
+                setStepDurations(prev => ({
+                    ...prev,
+                    [stepNum]: duration
+                }));
+                stepStartTimeRef.current = now;
+            };
+
+            // Keep the total timer sync logic
+            useEffect(() => {
+                if (startTimeRef.current && loading) {
+                    const now = Date.now();
+                    const totalElapsed = Math.floor((now - startTimeRef.current) / 1000);
+                    const timerEl = document.getElementById('elapsed-timer');
+                    if (timerEl) timerEl.innerText = totalElapsed;
+                }
+            }, [loadingStep]);
+            
+            // Debugging Logger
+            const logPerf = (label, duration) => {
+                console.log(`%c[PERF] ${label}: %c${duration}s`, "color: #3b82f6; font-weight: bold", "color: #fbbf24; font-weight: bold");
+            };
+
+            const [filters, setFilters] = useState({
+                nodeTypes: {
+                    PLAINTIFF: true,
+                    DEFENDANT: true,
+                    DATASET: true,
+                    AI_PRODUCT: true,
+                    LAWSUIT: true
+                },
+                status: 'ALL',
+                country: 'ALL',
+                yearRange: [2018, 2026]
+            });
+            const [layout, setLayout] = useState('fcose'); // 'fcose', 'cose' or 'dagre'
+            const [showEdgeLabels, setShowEdgeLabels] = useState(true);
+            const [stats, setStats] = useState({ total: 0, defendants: 0, datasets: 0, products: 0, topDefendants: [] });
+            const [graphElements, setGraphElements] = useState([]);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [autoCloseTimer, setAutoCloseTimer] = useState(null);
+            
+            const processWorkerRef = useRef(null);
+
+            const cyRef = useRef(null);
+            const containerRef = useRef(null);
+
+            // Extract unique countries for filter
+            const availableCountries = useMemo(() => {
+                const countries = new Set();
+                data.forEach(item => {
+                    if (item.country) countries.add(item.country.trim());
+                });
+                return Array.from(countries).sort();
+            }, [data]);
+
+            // Extract unique entities for search
+            const entities = useMemo(() => {
+                const plaintiffs = new Set();
+                const defendants = new Set();
+                const datasets = new Set();
+
+                data.forEach(item => {
+                    (item.plaintiff || '').split(',').map(s => s.trim()).filter(Boolean).forEach(p => plaintiffs.add(p));
+                    (item.defendant || '').split(',').map(s => s.trim()).filter(Boolean).forEach(d => defendants.add(d));
+                    (item.target_data || '').split(',').map(s => s.trim()).filter(Boolean).forEach(ds => datasets.add(ds));
+                });
+
+                return {
+                    PLAINTIFF: Array.from(plaintiffs).sort(),
+                    DEFENDANT: Array.from(defendants).sort(),
+                    DATASET: Array.from(datasets).sort()
+                };
+            }, [data]);
+
+            // 1. Fetch File List
+            useEffect(() => {
+                console.log("%c🚀 AI Litigation Lineage Debugger Started", "background: #1e293b; color: #3b82f6; padding: 10px; font-weight: bold; border-radius: 5px;");
+                setLoading(true);
+                setLoadingStep(1); 
+                const t0 = performance.now();
+                fetch('/api/files')
+                    .then(res => res.json())
+                    .then(fileList => {
+                        logPerf("File List Fetch", ((performance.now() - t0)/1000).toFixed(3));
+                        setFiles(fileList);
+                        if (fileList.length > 0) {
+                            setSelectedFile(fileList[0]);
+                        } else {
+                            setLoading(false);
+                        }
+                    })
+                    .catch(err => {
+                        console.error("Failed to load files:", err);
+                        setError("파일 목록을 불러오는데 실패했습니다.");
+                        setLoading(false);
+                    });
+            }, []);
+
+            // 2. Fetch and Parse CSV Data (With Session Caching)
+            useEffect(() => {
+                if (!selectedFile) return;
+
+                const cacheKey = `lineage_cache_${selectedFile}`;
+                const cached = sessionStorage.getItem(cacheKey);
+                
+                if (cached) {
+                    setLoadingStep(1);
+                    setTimeout(() => {
+                        recordStepDuration(1); // Step 1 Done
+                        setLoadingStep(2);     // Start Step 2
+                        const parsed = JSON.parse(cached);
+                        setData(parsed);
+                        calculateStats(parsed);
+                        setTimeout(() => {
+                            recordStepDuration(2); // Step 2 Done
+                            setLoadingStep(3);     // Start Step 3
+                        }, 500);
+                    }, 500);
+                    return;
+                }
+
+                setLoading(true);
+                setLoadingStep(1); // Step 1: Loading Dataset
+                setFocusTarget(null);
+                const url = `/api/cases?file_name=${selectedFile}`;
+                console.log(`%c📡 Fetching data for: ${selectedFile}`, "color: #60a5fa");
+                const t0 = performance.now();
+                fetch(url)
+                    .then(res => res.json())
+                    .then(result => {
+                        logPerf("Dataset Download", ((performance.now() - t0)/1000).toFixed(3));
+                        recordStepDuration(1); // Step 1 Done
+                        setLoadingStep(2);     // Start Step 2
+                        const rawData = result.data || [];
+                        
+                        // Defer storage to avoid blocking the main thread immediately
+                        setTimeout(() => {
+                            sessionStorage.setItem(cacheKey, JSON.stringify(rawData));
+                        }, 1000);
+
+                        setData(rawData);
+                        calculateStats(rawData);
+                        setTimeout(() => {
+                            recordStepDuration(2); // Step 2 Done
+                            setLoadingStep(3);     // Start Step 3
+                        }, 500);
+                    })
+                    .catch(err => {
+                        console.error("Failed to load data:", err);
+                        setError("데이터를 불러오는데 실패했습니다.");
+                        setLoading(false);
+                    });
+            }, [selectedFile]);
+
+            const calculateStats = async (rawData) => {
+                console.log("%c📊 Calculating Statistics...", "color: #a78bfa");
+                const t0 = performance.now();
+                const defMap = {};
+                const datasets = new Set();
+                const products = new Set();
+                const uniqueLawsuits = new Set();
+
+                // Chunked processing to keep UI alive (1000 items per chunk)
+                const chunkSize = 1000;
+                for (let i = 0; i < rawData.length; i += chunkSize) {
+                    const chunk = rawData.slice(i, i + chunkSize);
+                    chunk.forEach(item => {
+                        const lawsuitId = item.case_no || item.case_name || item.system_id;
+                        if (lawsuitId) uniqueLawsuits.add(lawsuitId);
+
+                        const defendants = (item.defendant || '').split(',').map(s => s.trim()).filter(Boolean);
+                        defendants.forEach(d => {
+                            defMap[d] = (defMap[d] || 0) + 1;
+                        });
+                        
+                        (item.target_data || '').split(',').map(s => s.trim()).filter(Boolean).forEach(d => datasets.add(d));
+                        (item.target_product || '').split(',').map(s => s.trim()).filter(Boolean).forEach(p => products.add(p));
+                    });
+                    // Yield control back to browser to allow UI/timer updates
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
+
+                const topDefendants = Object.entries(defMap)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([name, count]) => ({ name, count }));
+
+                setStats({
+                    total: uniqueLawsuits.size,
+                    defendants: Object.keys(defMap).length,
+                    datasets: datasets.size,
+                    products: products.size,
+                    topDefendants
+                });
+                logPerf("Statistics Calculation", ((performance.now() - t0)/1000).toFixed(3));
+            };
+
+            // 3. Optimized Data Processing via Web Worker
+            useEffect(() => {
+                if (data.length === 0) return;
+
+                const startProcessing = () => {
+                    setIsProcessing(true);
+                    setLoadingStep(3); // Step 3: Node & Edge Extraction
+                    
+                    // Create Worker for background processing
+                    const workerBlob = new Blob([`
+                        onmessage = function(e) {
+                            const { data, filters, NODE_COLORS, focusTarget } = e.data;
+                            const nodes = new Map();
+                            const edges = new Map();
+
+                            const addNode = (id, label, type, nodeData = {}) => {
+                                if (!id || nodes.has(id)) return;
+                                nodes.set(id, { data: { id, label, type, ...nodeData } });
+                            };
+
+                            const addEdge = (source, target, label, type) => {
+                                if (!source || !target) return;
+                                const edgeId = \`\${source}-\${target}-\${type}\`;
+                                if (edges.has(edgeId)) return;
+                                edges.set(edgeId, { data: { id: edgeId, source, target, label, type } });
+                            };
+
+                            // Filtering and Building
+                            data.forEach(item => {
+                                // Apply Filters
+                                const matchesStatus = filters.status === 'ALL' || (item.status || '').includes(filters.status);
+                                const matchesCountry = filters.country === 'ALL' || (item.country || '').includes(filters.country);
+                                if (!matchesStatus || !matchesCountry) return;
+
+                                // Apply Search/Focus Filter
+                                if (focusTarget && focusTarget.name) {
+                                    const { type, name } = focusTarget;
+                                    let matchesFocus = false;
+                                    if (type === 'PLAINTIFF') matchesFocus = (item.plaintiff || '').includes(name);
+                                    else if (type === 'DEFENDANT') matchesFocus = (item.defendant || '').includes(name);
+                                    else if (type === 'DATASET') matchesFocus = (item.target_data || '').includes(name);
+                                    if (!matchesFocus) return;
+                                }
+
+                                const lawsuitId = item.case_no || item.case_name || item.system_id;
+                                if (!lawsuitId) return;
+                                
+                                if (filters.nodeTypes.LAWSUIT) {
+                                    addNode(lawsuitId, item.case_name, 'LAWSUIT', { fullData: item, color: NODE_COLORS.LAWSUIT });
+                                }
+
+                                const plaintiffs = (item.plaintiff || '').split(',').map(s => s.trim()).filter(Boolean);
+                                plaintiffs.forEach(p => {
+                                    if (filters.nodeTypes.PLAINTIFF) {
+                                        addNode(p, p, 'PLAINTIFF', { color: NODE_COLORS.PLAINTIFF });
+                                        if (filters.nodeTypes.LAWSUIT) addEdge(p, lawsuitId, '제소', 'FILED_BY');
+                                    }
+                                });
+
+                                const defendants = (item.defendant || '').split(',').map(s => s.trim()).filter(Boolean);
+                                defendants.forEach(d => {
+                                    if (filters.nodeTypes.DEFENDANT) {
+                                        addNode(d, d, 'DEFENDANT', { color: NODE_COLORS.DEFENDANT });
+                                        if (filters.nodeTypes.LAWSUIT) addEdge(d, lawsuitId, '피소', 'SUED_IN');
+                                    }
+                                });
+                                
+                                const datasets = (item.target_data || '').split(',').map(s => s.trim()).filter(Boolean);
+                                datasets.forEach(ds => {
+                                    if (filters.nodeTypes.DATASET) {
+                                        addNode(ds, ds, 'DATASET', { color: NODE_COLORS.DATASET });
+                                        if (filters.nodeTypes.LAWSUIT) addEdge(lawsuitId, ds, '사용데이터', 'INVOLVES_DATA');
+                                    }
+                                });
+
+                                const products = (item.target_product || '').split(',').map(s => s.trim()).filter(Boolean);
+                                products.forEach(p => {
+                                    if (filters.nodeTypes.AI_PRODUCT) {
+                                        addNode(p, p, 'AI_PRODUCT', { color: NODE_COLORS.AI_PRODUCT });
+                                        if (filters.nodeTypes.LAWSUIT) addEdge(lawsuitId, p, '대상제품', 'TARGETS_PRODUCT');
+                                    }
+                                });
+                            });
+
+                            postMessage({ 
+                                elements: [...Array.from(nodes.values()), ...Array.from(edges.values())]
+                            });
+                        };
+                    `], { type: 'application/javascript' });
+
+                    if (processWorkerRef.current) processWorkerRef.current.terminate();
+                    processWorkerRef.current = new Worker(URL.createObjectURL(workerBlob));
+
+                    processWorkerRef.current.onmessage = (e) => {
+                        setGraphElements(e.data.elements);
+                        setIsProcessing(false);
+                        recordStepDuration(3); // Step 3 Done
+                        setLoadingStep(4);     // Start Step 4
+                    };
+
+                    processWorkerRef.current.postMessage({ data, filters, NODE_COLORS, focusTarget });
+                };
+
+                startProcessing();
+                return () => {
+                    if (processWorkerRef.current) processWorkerRef.current.terminate();
+                };
+            }, [data, filters, focusTarget]);
+
+            // Register SVG extension
+            useEffect(() => {
+                if (typeof cytoscapeSvg !== 'undefined') {
+                    cytoscape.use(cytoscapeSvg);
+                }
+            }, []);
+
+            // 4. Initialize Cytoscape (Persistent Instance)
+            useEffect(() => {
+                if (!containerRef.current) return;
+
+                const cy = cytoscape({
+                    container: containerRef.current,
+                    style: [
+                        {
+                            selector: 'node',
+                            style: {
+                                'label': 'data(label)',
+                                'background-color': 'data(color)',
+                                'color': '#fff',
+                                'text-valign': 'center',
+                                'text-halign': 'center',
+                                'font-size': '10px',
+                                'width': '30px',
+                                'height': '30px',
+                                'text-wrap': 'wrap',
+                                'text-max-width': '80px',
+                                'z-index': 10
+                            }
+                        },
+                        {
+                            selector: 'node[type="LAWSUIT"]',
+                            style: {
+                                'shape': 'rectangle',
+                                'width': '80px',
+                                'height': '30px'
+                            }
+                        },
+                        {
+                            selector: 'edge',
+                            style: {
+                                'width': 2,
+                                'line-color': '#475569',
+                                'target-arrow-color': '#475569',
+                                'target-arrow-shape': 'triangle',
+                                'curve-style': 'bezier',
+                                'label': 'data(label)',
+                                'font-size': '8px',
+                                'color': '#94a3b8',
+                                'text-rotation': 'autorotate'
+                            }
+                        },
+                        {
+                            selector: ':selected',
+                            style: {
+                                'border-width': '4px',
+                                'border-color': '#fbbf24',
+                                'line-color': '#fbbf24'
+                            }
+                        }
+                    ]
+                });
+
+                cy.on('tap', 'node', (evt) => {
+                    const node = evt.target;
+                    const nodeData = node.data();
+                    if (nodeData.type === 'LAWSUIT') {
+                        setSelectedNode(nodeData.fullData);
+                    } else {
+                        setSelectedNode({ 
+                            case_name: nodeData.label, 
+                            case_no: nodeData.type, 
+                            summary: `연결된 소송 수: ${node.degree()}`,
+                            plaintiff: nodeData.type === 'PLAINTIFF' ? nodeData.label : '',
+                            defendant: nodeData.type === 'DEFENDANT' ? nodeData.label : ''
+                        });
+                    }
+                });
+
+                cyRef.current = cy;
+                return () => cy.destroy();
+            }, []);
+
+            // 5. Update Elements and Run Layout
+            useEffect(() => {
+                const cy = cyRef.current;
+                if (!cy || isProcessing || graphElements.length === 0) return;
+
+                cy.batch(() => {
+                    // Step 4 is already set in worker onmessage, here we just do the work
+                    cy.elements().remove();
+                    cy.add(graphElements);
+                });
+
+                // Use a slightly longer delay for Step 5 to ensure Step 4 time is registered
+                setTimeout(() => {
+                    console.log("%c🎨 Running Graph Layout Engine...", "color: #10b981");
+                    const t0 = performance.now();
+                    recordStepDuration(4); // Step 4 Done
+                    setLoadingStep(5);     // Start Step 5
+                    
+                    const layoutConfig = {
+                        name: layout,
+                        animate: true,
+                        refresh: 5,
+                        fit: true,
+                        padding: 30,
+                        nodeOverlap: 20,
+                        componentSpacing: 100
+                    };
+
+                    // Specific optimizations for fcose (Fast COSE)
+                    if (layout === 'fcose') {
+                        Object.assign(layoutConfig, {
+                            quality: 'proof', // Fastest quality
+                            randomize: false,
+                            packComponents: true,
+                            nodeRepulsion: 4500,
+                            idealEdgeLength: 100,
+                            sampleSize: 20, // Reduced from 50 for speed
+                            numIter: 500 // Reduced from 1000 for speed
+                        });
+                    } else if (layout === 'cose') {
+                        Object.assign(layoutConfig, {
+                            numIter: 300, // Reduced for speed
+                            initialTemp: 100,
+                            coolingFactor: 0.8 // Faster cooling
+                        });
+                    }
+
+                    const l = cy.layout(layoutConfig);
+                    
+                    // Hook into layoutstop to remove overlay
+                    l.one('layoutstop', () => {
+                        logPerf("Layout Calculation", ((performance.now() - t0)/1000).toFixed(3));
+                        requestAnimationFrame(() => {
+                            recordStepDuration(5); // Step 5 Done
+                            setLoadingStep(6);     // Start Step 6
+                            
+                            // Ensure Step 6 shows processing for a moment, then completes
+                            setTimeout(() => {
+                                recordStepDuration(6); // Step 6 Done
+                                setLoadingStep(7);     // Everything Done
+                                window.timerStopped = true; // Stop the global timer
+                                setAutoCloseTimer(10); // Start the 10s countdown
+                            }, 800);
+                        });
+                        console.log("%c✅ Lineage Graph Generation Complete!", "color: #10b981; font-weight: bold");
+                    });
+
+                    l.run();
+
+                    // Update edge labels visibility
+                    cy.edges().style('label', showEdgeLabels ? 'data(label)' : '');
+                }, 200);
+                
+            }, [graphElements, layout, showEdgeLabels]);
+
+            const exportGraph = async (type) => {
+                const cy = cyRef.current;
+                if (!cy) return;
+
+                setIsExporting(true);
+                const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+                const filename = `ai-litigation-lineage-${timestamp}`;
+
+                try {
+                    if (type === 'png') {
+                        const pngContent = cy.png({ full: true, bg: '#0f172a', scale: 2 });
+                        const link = document.createElement('a');
+                        link.href = pngContent;
+                        link.download = `${filename}.png`;
+                        link.click();
+                    } else if (type === 'svg') {
+                        if (typeof cy.svg !== 'function') throw new Error("SVG export extension not loaded");
+                        const svgContent = cy.svg({ full: true, bg: '#0f172a' });
+                        const blob = new Blob([svgContent], { type: "image/svg+xml;charset=utf-8" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = `${filename}.svg`;
+                        link.click();
+                    } else if (type === 'pdf') {
+                        const { jsPDF } = window.jspdf;
+                        const imgData = cy.png({ full: true, bg: '#0f172a', scale: 2 });
+                        
+                        // Calculate dimensions to fit PDF (A4 landscape ratio)
+                        const pdf = new jsPDF('l', 'px', [cy.width(), cy.height()]);
+                        pdf.addImage(imgData, 'PNG', 0, 0, cy.width(), cy.height());
+                        pdf.save(`${filename}.pdf`);
+                    }
+                } catch (err) {
+                    console.error("Export failed:", err);
+                    alert("그래프 저장에 실패했습니다: " + err.message);
+                } finally {
+                    setIsExporting(false);
+                }
+            };
+
+            const handleDrilldown = (type) => {
+                let title = '';
+                let items = [];
+
+                if (type === 'TOTAL') {
+                    title = '전체 소송 현황 (피고 기준 정렬)';
+                    
+                    // Deduplicate by unique case ID to match stats.total (145)
+                    const seenIds = new Set();
+                    const uniqueData = [];
+                    
+                    data.forEach(item => {
+                        const id = item.case_no || item['Case No'] || item.case_number || item['소송번호'] || 
+                                   item.case_name || item['Case Name'] || item['소송명'] || 
+                                   item.system_id || item.id;
+                                   
+                        if (id && !seenIds.has(id)) {
+                            seenIds.add(id);
+                            uniqueData.push(item);
+                        }
+                    });
+
+                    items = uniqueData.sort((a, b) => {
+                        const defA = a.defendant || a.Defendant || a['피고'] || '';
+                        const defB = b.defendant || b.Defendant || b['피고'] || '';
+                        return defA.localeCompare(defB);
+                    }).map(item => ({
+                        label: item.case_name || item['Case Name'] || item.case_name_ko || item['소송명'] || 
+                               item.case_no || item['Case No'] || item.case_number || item['소송번호'] || 
+                               item.system_id || '제목 없음 (Unknown Case)',
+                        sub: item.case_no || item['Case No'] || item.case_number || item['소송번호'] || item.system_id || '',
+                        desc: `피고: ${item.defendant || item.Defendant || item['피고'] || '기록 없음 (N/A)'}`
+                    }));
+                } else if (type === 'DEFENDANT') {
+                    title = '주요 피고 기업 (소송 건수순)';
+                    const counts = {};
+                    data.forEach(item => {
+                        const defStr = item.defendant || item.Defendant || item['피고'] || '';
+                        defStr.split(',').map(s => s.trim()).filter(Boolean).forEach(d => {
+                            counts[d] = (counts[d] || 0) + 1;
+                        });
+                    });
+                    items = Object.entries(counts)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, count]) => ({ label: name, count }));
+                } else if (type === 'DATASET') {
+                    title = '관련 데이터셋 (사용 빈도순)';
+                    const counts = {};
+                    data.forEach(item => {
+                        const dsStr = item.target_data || item['Target Data'] || item['데이터셋'] || '';
+                        dsStr.split(',').map(s => s.trim()).filter(Boolean).forEach(d => {
+                            counts[d] = (counts[d] || 0) + 1;
+                        });
+                    });
+                    items = Object.entries(counts)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, count]) => ({ label: name, count }));
+                } else if (type === 'PRODUCT') {
+                    title = '연관 AI 제품 (소송 노출순)';
+                    const counts = {};
+                    data.forEach(item => {
+                        const prStr = item.target_product || item['Target Product'] || item['AI제품'] || '';
+                        prStr.split(',').map(s => s.trim()).filter(Boolean).forEach(p => {
+                            counts[p] = (counts[p] || 0) + 1;
+                        });
+                    });
+                    items = Object.entries(counts)
+                        .sort((a, b) => b[1] - a[1])
+                        .map(([name, count]) => ({ label: name, count }));
+                }
+
+                setDrilldown({ open: true, title, items, page: 1 });
+            };
+
+            const runLayout = () => {
+                if (cyRef.current) {
+                    cyRef.current.layout({ name: layout, animate: true }).run();
+                }
+            };
+
+            return (
+                <div className="flex flex-col h-screen w-full relative">
+                    {/* Loading Overlay */}
+                    {loading && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm">
+                            <div className="flex flex-col items-center glass p-10 rounded-3xl border border-blue-500/30 shadow-[0_0_50px_rgba(59,130,246,0.15)] max-w-lg w-full">
+                                {loadingStep < 7 ? (
+                                    <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-8 shadow-[0_0_20px_rgba(59,130,246,0.5)]"></div>
+                                ) : (
+                                    <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(16,185,129,0.5)] animate-in zoom-in duration-500">
+                                        <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                    </div>
+                                )}
+                                
+                                <div className="w-full space-y-6">
+                                    <div className="text-center">
+                                        <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">AI Litigation Lineage</h2>
+                                    </div>
+                                    
+                                    {/* ROW 1: Detailed Step Progress */}
+                                    <div className="space-y-3 mb-8 bg-slate-900/50 p-4 rounded-lg border border-slate-800">
+                                        {[
+                                            { stepNum: 1, text: "데이터 세트 로드 중" },
+                                            { stepNum: 2, text: "데이터 구조 분석 및 필터링" },
+                                            { stepNum: 3, text: "그래프 노드 및 엣지 추출" },
+                                            { stepNum: 4, text: "관계도 물리 연산 엔진 초기화" },
+                                            { stepNum: 5, text: "최적의 시각화 레이아웃 배치 중" },
+                                            { stepNum: 6, text: "통계 데이터 집계 및 최종 렌더링" }
+                                        ].map(({ stepNum, text }) => {
+                                            const isActive = loadingStep === stepNum;
+                                            const isDone = loadingStep > stepNum;
+                                            return (
+                                                <div key={stepNum} className={`flex items-center justify-between text-sm transition-all duration-300 ${isActive ? 'scale-105 origin-left' : ''}`}>
+                                                    <div className="flex items-center space-x-3">
+                                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                                                            isActive ? 'bg-red-500 text-white animate-pulse' : 
+                                                            isDone ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-500'
+                                                        }`}>
+                                                            {isDone ? '✓' : stepNum}
+                                                        </div>
+                                                        <span className={`font-medium ${
+                                                            isActive ? 'text-red-500' : 
+                                                            isDone ? 'text-emerald-500' : 'text-slate-500'
+                                                        }`}>
+                                                            {text}
+                                                            {isDone && stepDurations[stepNum] && (
+                                                                <span className="ml-2 text-[10px] text-slate-400 font-normal">
+                                                                    (소요시간: {stepDurations[stepNum]}초)
+                                                                </span>
+                                                            )}
+                                                        </span>
+                                                    </div>
+                                                    {isActive && (
+                                                        <span className="text-[10px] text-red-400 animate-bounce uppercase font-bold tracking-tighter">Processing...</span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    {/* ROW 2: Total Accurate Timer Section (Vanilla JS Driven) */}
+                                    <div className="text-center pt-6 border-t-2 border-blue-500/20">
+                                        <div className="inline-block px-4 py-2 bg-blue-500/10 rounded-full border border-blue-500/20 mb-2">
+                                            <p className="text-slate-300 text-sm font-semibold flex items-center justify-center">
+                                                <span className="mr-2">⏱️</span> 총 경과 시간: 
+                                                <span className="mx-2">
+                                                    <span id="global-timer-value" className="text-blue-400 text-2xl">0</span>
+                                                </span>
+                                                초
+                                            </p>
+                                        </div>
+                                        
+                                        {loadingStep >= 6 && (
+                                            <div className="mt-4 animate-in fade-in zoom-in duration-500">
+                                                <p className="text-emerald-400 text-sm font-bold mb-4">
+                                                    ✨ 분석 및 시각화가 완료되었습니다.
+                                                </p>
+                                                <button 
+                                                    onClick={() => { setLoading(false); setAutoCloseTimer(null); }}
+                                                    className="px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-bold transition-all transform hover:scale-105 shadow-lg shadow-blue-500/20"
+                                                >
+                                                    Close
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Error Overlay */}
+                    {error && (
+                        <div className="absolute inset-0 z-50 flex items-center justify-center bg-slate-950/90">
+                            <div className="glass p-8 rounded-xl border-red-500/30 text-center max-w-md">
+                                <div className="text-red-500 text-4xl mb-4">⚠️</div>
+                                <h3 className="text-xl font-bold mb-2">오류 발생</h3>
+                                <p className="text-slate-400 mb-6">{error}</p>
+                                <button 
+                                    onClick={() => window.location.reload()}
+                                    className="px-6 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                                >
+                                    새로고침
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Header */}
+                    <header className="h-16 flex items-center justify-between px-6 glass z-20">
+                        <div className="flex items-center space-x-4">
+                            <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">
+                                AI-LITIGATION LINEAGE
+                            </h1>
+                            <select 
+                                className="bg-slate-800 border border-slate-700 text-sm px-3 py-1 rounded outline-none focus:ring-2 ring-blue-500"
+                                value={selectedFile}
+                                onChange={(e) => setSelectedFile(e.target.value)}
+                            >
+                                {files.map(f => <option key={f} value={f}>{f}</option>)}
+                            </select>
+                        </div>
+                        
+                        <div className="flex items-center space-x-6 text-sm">
+                            <div className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onClick={() => handleDrilldown('TOTAL')}>
+                                <span className="text-slate-400 text-xs">총 소송</span>
+                                <span className="font-bold text-orange-400">{stats.total}</span>
+                            </div>
+                            <div className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onClick={() => handleDrilldown('DEFENDANT')}>
+                                <span className="text-slate-400 text-xs">피고 기업</span>
+                                <span className="font-bold text-red-400">{stats.defendants}</span>
+                            </div>
+                            <div className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onClick={() => handleDrilldown('DATASET')}>
+                                <span className="text-slate-400 text-xs">데이터셋</span>
+                                <span className="font-bold text-emerald-400">{stats.datasets}</span>
+                            </div>
+                            <div className="flex flex-col items-center cursor-pointer hover:scale-105 transition-transform" onClick={() => handleDrilldown('PRODUCT')}>
+                                <span className="text-slate-400 text-xs">AI 제품</span>
+                                <span className="font-bold text-purple-400">{stats.products}</span>
+                            </div>
+                            <button 
+                                onClick={() => window.location.href = '/'}
+                                className="px-3 py-1 bg-slate-700 hover:bg-slate-600 rounded"
+                            >
+                                대시보드로 돌아가기
+                            </button>
+                        </div>
+                    </header>
+
+                    <div className="flex flex-1 overflow-hidden">
+                        {/* Sidebar Left: Filters */}
+                        <aside className="w-64 glass p-4 overflow-y-auto z-20">
+                            <h2 className="font-semibold mb-4 text-slate-300">필터 및 검색</h2>
+                            
+                            {/* Search & Focus Section */}
+                            <div className="mb-8 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
+                                <h3 className="text-xs font-bold text-blue-400 uppercase mb-3 flex items-center">
+                                    <span className="mr-2">🔍</span> 대상 검색 및 포커스
+                                </h3>
+                                
+                                <div className="space-y-3">
+                                    <div>
+                                        <label className="text-[10px] text-slate-500 block mb-1">검색 타입</label>
+                                        <div className="flex space-x-1">
+                                            {['PLAINTIFF', 'DEFENDANT', 'DATASET'].map(t => (
+                                                <button 
+                                                    key={t}
+                                                    onClick={() => setFocusTarget(prev => prev && prev.type === t ? null : { type: t, name: '' })}
+                                                    className={`flex-1 text-[9px] py-1 rounded transition-colors ${focusTarget?.type === t ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                                >
+                                                    {t === 'PLAINTIFF' ? '원고' : t === 'DEFENDANT' ? '피고' : '데이터'}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {focusTarget && (
+                                        <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                                            <label className="text-[10px] text-slate-500 block mb-1">대상 선택</label>
+                                            <select 
+                                                className="w-full bg-slate-900 border border-slate-700 text-xs px-2 py-1.5 rounded outline-none focus:ring-1 ring-blue-500"
+                                                value={focusTarget.name}
+                                                onChange={(e) => setFocusTarget({ ...focusTarget, name: e.target.value })}
+                                            >
+                                                <option value="">-- 선택하세요 --</option>
+                                                {entities[focusTarget.type].map(name => (
+                                                    <option key={name} value={name}>{name}</option>
+                                                ))}
+                                            </select>
+                                            
+                                            {focusTarget.name && (
+                                                <button 
+                                                    onClick={() => setFocusTarget(null)}
+                                                    className="w-full mt-2 text-[10px] py-1 text-red-400 hover:text-red-300 transition-colors"
+                                                >
+                                                    포커스 해제 ✕
+                                                </button>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">노드 타입</h3>
+                                {Object.keys(filters.nodeTypes).map(type => (
+                                    <label key={type} className="flex items-center space-x-2 mb-2 cursor-pointer group">
+                                        <input 
+                                            type="checkbox" 
+                                            checked={filters.nodeTypes[type]}
+                                            onChange={() => setFilters(f => ({
+                                                ...f, 
+                                                nodeTypes: { ...f.nodeTypes, [type]: !f.nodeTypes[type] }
+                                            }))}
+                                            className="form-checkbox h-4 w-4 text-blue-500 bg-slate-800 border-slate-700 rounded"
+                                        />
+                                        <span className="text-sm group-hover:text-white transition-colors">{type}</span>
+                                        <span className="w-2 h-2 rounded-full" style={{backgroundColor: NODE_COLORS[type]}}></span>
+                                    </label>
+                                ))}
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">진행 현황</h3>
+                                <select 
+                                    className="w-full bg-slate-800 border border-slate-700 text-xs px-2 py-2 rounded outline-none"
+                                    value={filters.status}
+                                    onChange={(e) => setFilters(f => ({ ...f, status: e.target.value }))}
+                                >
+                                    <option value="ALL">전체 보기</option>
+                                    <option value="준비">준비 중</option>
+                                    <option value="제기">소 제기됨</option>
+                                    <option value="1심">1심 진행중</option>
+                                    <option value="2심">2심 진행중</option>
+                                    <option value="판결">판결 선고</option>
+                                    <option value="종결">사건 종결</option>
+                                </select>
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">국가 필터</h3>
+                                <select 
+                                    className="w-full bg-slate-800 border border-slate-700 text-xs px-2 py-2 rounded outline-none"
+                                    value={filters.country}
+                                    onChange={(e) => setFilters(f => ({ ...f, country: e.target.value }))}
+                                >
+                                    <option value="ALL">전체 국가 (All Countries)</option>
+                                    {availableCountries.map(country => (
+                                        <option key={country} value={country}>{country}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="mb-6">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-2">그래프 설정</h3>
+                                <div className="flex space-x-2 mb-4">
+                                    <button 
+                                        onClick={() => setLayout('cose')}
+                                        className={`flex-1 text-[10px] py-1 rounded ${layout === 'cose' ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                    >
+                                        Force
+                                    </button>
+                                    <button 
+                                        onClick={() => setLayout('grid')}
+                                        className={`flex-1 text-[10px] py-1 rounded ${layout === 'grid' ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                    >
+                                        Grid
+                                    </button>
+                                    <button 
+                                        onClick={() => setLayout('circle')}
+                                        className={`flex-1 text-[10px] py-1 rounded ${layout === 'circle' ? 'bg-blue-600' : 'bg-slate-700'}`}
+                                    >
+                                        Circle
+                                    </button>
+                                </div>
+                                <label className="flex items-center space-x-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox" 
+                                        checked={showEdgeLabels}
+                                        onChange={() => setShowEdgeLabels(!showEdgeLabels)}
+                                        className="form-checkbox h-3 w-3 text-blue-500"
+                                    />
+                                    <span className="text-xs text-slate-400">엣지 라벨 표시</span>
+                                </label>
+                            </div>
+
+                            {/* Export Section */}
+                            <div className="mb-6 pt-4 border-t border-slate-800">
+                                <h3 className="text-xs font-bold text-blue-400 uppercase mb-3 flex items-center">
+                                    <span className="mr-2">💾</span> 그래프 내보내기 (Export)
+                                </h3>
+                                <div className="grid grid-cols-3 gap-2">
+                                    <button 
+                                        onClick={() => exportGraph('png')}
+                                        disabled={isExporting}
+                                        className="flex flex-col items-center justify-center p-2 bg-slate-800/50 hover:bg-slate-700 rounded border border-slate-700 transition-all hover:scale-105 disabled:opacity-50"
+                                        title="Save as PNG image"
+                                    >
+                                        <span className="text-lg mb-1">🖼️</span>
+                                        <span className="text-[9px] font-bold text-slate-300">PNG</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => exportGraph('svg')}
+                                        disabled={isExporting}
+                                        className="flex flex-col items-center justify-center p-2 bg-slate-800/50 hover:bg-slate-700 rounded border border-slate-700 transition-all hover:scale-105 disabled:opacity-50"
+                                        title="Save as SVG (Vector)"
+                                    >
+                                        <span className="text-lg mb-1">📐</span>
+                                        <span className="text-[9px] font-bold text-slate-300">SVG</span>
+                                    </button>
+                                    <button 
+                                        onClick={() => exportGraph('pdf')}
+                                        disabled={isExporting}
+                                        className="flex flex-col items-center justify-center p-2 bg-slate-800/50 hover:bg-slate-700 rounded border border-slate-700 transition-all hover:scale-105 disabled:opacity-50"
+                                        title="Save as PDF document"
+                                    >
+                                        <span className="text-lg mb-1">📄</span>
+                                        <span className="text-[9px] font-bold text-slate-300">PDF</span>
+                                    </button>
+                                </div>
+                                {isExporting && (
+                                    <div className="mt-2 text-center">
+                                        <span className="text-[9px] text-blue-400 animate-pulse">Exporting...</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="mt-auto pt-6 border-t border-slate-800">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase mb-4 flex items-center">
+                                    <span className="w-1 h-3 bg-red-500 rounded-full mr-2"></span>
+                                    Top 5 피고 (소송 건수)
+                                </h3>
+                                <div className="h-48">
+                                    {BarChart ? (
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart 
+                                                data={stats.topDefendants} 
+                                                layout="vertical"
+                                                margin={{ top: 5, right: 50, left: 10, bottom: 5 }}
+                                            >
+                                                <XAxis type="number" hide domain={[0, 'dataMax + 5']} />
+                                                <YAxis 
+                                                    dataKey="name" 
+                                                    type="category" 
+                                                    width={90} 
+                                                    fontSize={10} 
+                                                    tick={{fill: '#cbd5e1', fontWeight: 500}} 
+                                                    interval={0}
+                                                    axisLine={false}
+                                                    tickLine={false}
+                                                />
+                                                <Tooltip 
+                                                    cursor={{fill: 'rgba(255,255,255,0.05)'}}
+                                                    contentStyle={{backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '8px', fontSize: '11px'}} 
+                                                />
+                                                <Bar dataKey="count" radius={[0, 4, 4, 0]} barSize={20}>
+                                                    {stats.topDefendants.map((entry, index) => (
+                                                        <Cell key={`cell-${index}`} fill={['#ef4444', '#f87171', '#fca5a5', '#fecaca', '#fee2e2'][index % 5]} />
+                                                    ))}
+                                                    <LabelList dataKey="count" position="right" fill="#94a3b8" fontSize={10} offset={10} fontWeight="bold" />
+                                                </Bar>
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    ) : (
+                                        <div className="text-[10px] text-slate-500 text-center pt-8 italic">통계 데이터를 분석 중입니다...</div>
+                                    )}
+                                </div>
+                            </div>
+                        </aside>
+
+                        {/* Graph Area */}
+                        <main className="flex-1 relative bg-slate-950">
+                            <div ref={containerRef} id="cy" />
+                            
+                            {/* Floating Controls */}
+                            <div className="absolute bottom-6 right-6 flex flex-col space-y-2">
+                                <button 
+                                    onClick={() => cyRef.current?.zoom(cyRef.current.zoom() * 1.2)}
+                                    className="w-10 h-10 glass rounded-full flex items-center justify-center hover:bg-slate-700"
+                                >
+                                    +
+                                </button>
+                                <button 
+                                    onClick={() => cyRef.current?.zoom(cyRef.current.zoom() / 1.2)}
+                                    className="w-10 h-10 glass rounded-full flex items-center justify-center hover:bg-slate-700"
+                                >
+                                    −
+                                </button>
+                                <button 
+                                    onClick={() => cyRef.current?.fit()}
+                                    className="w-10 h-10 glass rounded-full flex items-center justify-center hover:bg-slate-700"
+                                >
+                                    ⟲
+                                </button>
+                            </div>
+                        </main>
+
+                        {/* Sidebar Right: Details */}
+                        <aside className={`w-80 glass transition-transform duration-300 transform ${selectedNode ? 'translate-x-0' : 'translate-x-full'} absolute right-0 top-16 bottom-0 z-30 shadow-2xl`}>
+                            {selectedNode ? (
+                                <div className="p-6 h-full flex flex-col overflow-y-auto">
+                                    <div className="flex justify-between items-start mb-6">
+                                        <h2 className="text-lg font-bold text-white pr-4">
+                                            {selectedNode.case_name}
+                                        </h2>
+                                        <button 
+                                            onClick={() => setSelectedNode(null)}
+                                            className="text-slate-400 hover:text-white"
+                                        >
+                                            ✕
+                                        </button>
+                                    </div>
+
+                                    <div className="space-y-4 text-sm">
+                                        {selectedNode.case_no && (
+                                            <div className="bg-slate-800/50 p-3 rounded border border-slate-700">
+                                                <div className="text-xs text-slate-500 uppercase mb-1">소송 번호 / 타입</div>
+                                                <div className="text-blue-400 font-mono">{selectedNode.case_no}</div>
+                                            </div>
+                                        )}
+                                        
+                                        {selectedNode.file_date && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase mb-1">소송 제기일</div>
+                                                <div>📅 {selectedNode.file_date}</div>
+                                            </div>
+                                        )}
+
+                                        {selectedNode.status && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase mb-1">진행 현황</div>
+                                                <span className="px-2 py-0.5 bg-orange-500/20 text-orange-400 rounded-full text-[10px] border border-orange-500/30">
+                                                    {selectedNode.status}
+                                                </span>
+                                            </div>
+                                        )}
+
+                                        {selectedNode.court && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase mb-1">법원 / 국가</div>
+                                                <div>📍 {selectedNode.court} ({selectedNode.country})</div>
+                                            </div>
+                                        )}
+
+                                        {selectedNode.reason && (
+                                            <div>
+                                                <div className="text-xs text-slate-500 uppercase mb-1">소송 이유</div>
+                                                <div className="text-slate-300 leading-relaxed">{selectedNode.reason}</div>
+                                            </div>
+                                        )}
+
+                                        <div className="border-t border-slate-700 pt-4">
+                                            <div className="text-xs text-slate-500 uppercase mb-2">주요 관계자</div>
+                                            <div className="space-y-2">
+                                                {selectedNode.plaintiff && (
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                                                        <span className="text-xs">원고: {selectedNode.plaintiff}</span>
+                                                    </div>
+                                                )}
+                                                {selectedNode.defendant && (
+                                                    <div className="flex items-center space-x-2">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                                                        <span className="text-xs">피고: {selectedNode.defendant}</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {selectedNode.summary && (
+                                            <div className="border-t border-slate-700 pt-4">
+                                                <div className="text-xs text-slate-500 uppercase mb-1">개요</div>
+                                                <div className="text-xs text-slate-400 italic bg-slate-900/30 p-2 rounded leading-relaxed">
+                                                    {selectedNode.summary}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {selectedNode.url && (
+                                            <div className="pt-4">
+                                                <a 
+                                                    href={selectedNode.url} 
+                                                    target="_blank" 
+                                                    className="inline-block w-full text-center py-2 bg-blue-600 hover:bg-blue-500 text-white rounded font-semibold transition-colors"
+                                                >
+                                                    상세 트래커 열기
+                                                </a>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex items-center justify-center h-full text-slate-500 italic">
+                                    노드를 선택하여 상세 정보를 확인하세요.
+                                </div>
+                            )}
+                        </aside>
+                    </div>
+
+                    {/* Drilldown Modal */}
+                    {drilldown.open && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-md animate-in fade-in duration-300">
+                            <div className="bg-slate-900 w-full max-w-2xl max-h-[80vh] rounded-2xl border border-slate-700 shadow-2xl flex flex-col overflow-hidden">
+                                <div className="p-5 border-b border-slate-800 flex justify-between items-center bg-slate-800/30">
+                                    <h3 className="text-lg font-bold text-white flex items-center">
+                                        <span className="mr-2 text-blue-400">📊</span>
+                                        {drilldown.title}
+                                    </h3>
+                                    <button 
+                                        onClick={() => setDrilldown({ ...drilldown, open: false })}
+                                        className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                                    >
+                                        ✕
+                                    </button>
+                                </div>
+                                
+                                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar" id="drilldown-scroll-container">
+                                    <div className="space-y-2">
+                                        {(() => {
+                                            const pageSize = 15;
+                                            const startIndex = (drilldown.page - 1) * pageSize;
+                                            const paginated = drilldown.items.slice(startIndex, startIndex + pageSize);
+                                            
+                                            return paginated.map((item, idx) => (
+                                                <div key={idx} className="bg-slate-800/40 p-3 rounded-lg border border-slate-700/50 hover:bg-slate-800 transition-colors flex justify-between items-center group">
+                                                    <div className="flex-1">
+                                                        <div className="text-sm font-bold text-slate-100 group-hover:text-blue-300 transition-colors">
+                                                            {item.label}
+                                                        </div>
+                                                        {item.sub && <div className="text-[10px] text-slate-500 font-mono mt-0.5">{item.sub}</div>}
+                                                        {item.desc && <div className="text-[10px] text-emerald-400 mt-1">{item.desc}</div>}
+                                                    </div>
+                                                    {item.count !== undefined && (
+                                                        <div className="ml-4 px-3 py-1 bg-blue-500/10 text-blue-400 rounded-full text-xs font-bold border border-blue-500/20">
+                                                            {item.count} 건
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ));
+                                        })()}
+                                    </div>
+                                </div>
+                                
+                                <div className="p-4 border-t border-slate-800 bg-slate-900/80">
+                                    {/* Pagination Controls */}
+                                    {drilldown.items.length > 15 && (
+                                        <div className="flex justify-center items-center space-x-2 mb-4">
+                                            <button 
+                                                disabled={drilldown.page === 1}
+                                                onClick={() => {
+                                                    setDrilldown(prev => ({ ...prev, page: prev.page - 1 }));
+                                                    document.getElementById('drilldown-scroll-container').scrollTop = 0;
+                                                }}
+                                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded text-xs transition-all"
+                                            >
+                                                &lt; Prev
+                                            </button>
+                                            
+                                            <div className="flex space-x-1">
+                                                {(() => {
+                                                    const totalPages = Math.ceil(drilldown.items.length / 15);
+                                                    const pages = [];
+                                                    const startPage = Math.max(1, drilldown.page - 2);
+                                                    const endPage = Math.min(totalPages, startPage + 4);
+                                                    
+                                                    for (let i = startPage; i <= endPage; i++) {
+                                                        pages.push(
+                                                            <button 
+                                                                key={i}
+                                                                onClick={() => {
+                                                                    setDrilldown(prev => ({ ...prev, page: i }));
+                                                                    document.getElementById('drilldown-scroll-container').scrollTop = 0;
+                                                                }}
+                                                                className={`w-7 h-7 rounded text-[10px] font-bold transition-all ${drilldown.page === i ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-800 text-slate-400 hover:bg-slate-700'}`}
+                                                            >
+                                                                {i}
+                                                            </button>
+                                                        );
+                                                    }
+                                                    return pages;
+                                                })()}
+                                            </div>
+
+                                            <button 
+                                                disabled={drilldown.page === Math.ceil(drilldown.items.length / 15)}
+                                                onClick={() => {
+                                                    setDrilldown(prev => ({ ...prev, page: prev.page + 1 }));
+                                                    document.getElementById('drilldown-scroll-container').scrollTop = 0;
+                                                }}
+                                                className="px-3 py-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-30 rounded text-xs transition-all"
+                                            >
+                                                Next &gt;
+                                            </button>
+                                        </div>
+                                    )}
+
+                                    <div className="flex justify-between items-center">
+                                        <span className="text-[10px] text-slate-500 font-bold">
+                                            Total: {drilldown.items.length} items
+                                        </span>
+                                        <button 
+                                            onClick={() => setDrilldown({ ...drilldown, open: false })}
+                                            className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-bold text-sm transition-all"
+                                        >
+                                            닫기 (Close)
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<LineageDashboard />);
+    </script>
+    <script>
+        // Global Timer Script - Runs outside React to ensure accuracy
+        (function() {
+            let start = Date.now();
+            let timerEl = null;
+            window.timerStopped = false; // Initialize stop flag
+            
+            function update() {
+                if (window.timerStopped) return; // Stop the clock when flag is set
+                if (!timerEl) timerEl = document.getElementById('global-timer-value');
+                if (timerEl) {
+                    timerEl.innerText = Math.floor((Date.now() - start) / 1000);
+                }
+                requestAnimationFrame(update);
+            }
+            
+            // Check if loading started
+            const observer = new MutationObserver(() => {
+                const el = document.getElementById('global-timer-value');
+                if (el && !timerEl) {
+                    start = Date.now();
+                    timerEl = el;
+                }
+            });
+            
+            observer.observe(document.body, { childList: true, subtree: true });
+            update();
+        })();
+    </script>
+</body>
+</html>
