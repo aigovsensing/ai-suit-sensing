@@ -1,2 +1,2 @@
-# ai-suit-sensing-
-AI suit sensing due to the illegal training data of AI company.
+# ai-suit-sensing
+AI suit sensing project focused on AI training data compliance concerns.
