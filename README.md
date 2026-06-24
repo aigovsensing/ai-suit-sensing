@@ -133,7 +133,7 @@ dashboard/
 ```
 ai-suit-sensing/
 ├── tracker/        # 소송 센싱 도구 (CourtListener/RECAP & News Extractor)
-├── tba-analyzer/   # 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
+├── tba-analyzer/   # TBA: 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
 ├── dashboard/      # 소송 현황 대시보드 (AI Litigation Dashboard)
 ├── .github/workflows/
 │   ├── lawsuit-monitor.yml   # tracker 자동 센싱 (스케줄)
