@@ -3221,11 +3221,20 @@ main {
     transition: all 0.2s ease;
 }
 
-.report-field select:focus, 
+.report-field select:focus,
 .report-field input:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
     outline: none;
+}
+
+/* 연/월 드롭다운(크로스브라우저 month picker) — 두 select를 가로로 배치 */
+.month-picker-group {
+    display: flex;
+    gap: 8px;
+}
+.month-picker-group select {
+    flex: 1;
 }
 
 #generate-report-btn {

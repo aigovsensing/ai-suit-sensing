@@ -718,7 +718,12 @@
                     </div>
                     <div class="report-field">
                         <label>📅 대상 월 (연도-월)</label>
-                        <input type="month" id="report-month-input">
+                        <!-- type="month"는 Firefox 등 일부 브라우저에서 달력 위젯이 없어
+                             연/월 드롭다운으로 대체(크로스브라우저). JS에서 'YYYY-MM'으로 조합. -->
+                        <div class="month-picker-group">
+                            <select id="report-year-input" aria-label="연도"></select>
+                            <select id="report-month-num-input" aria-label="월"></select>
+                        </div>
                     </div>
                 </div>
                 <button id="generate-report-btn">🚀 보고서 생성 시작</button>
