@@ -682,9 +682,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
             
-            generateReportBtn.innerHTML = '<span class="loader"></span> AI 분석 중...';
+            // 경과 시간(초)을 1초마다 버튼에 표시
+            const startTime = Date.now();
+            const renderBtnLabel = (sec) => `<span class="loader"></span> AI 분석 중... (${sec}초 경과)`;
+            generateReportBtn.innerHTML = renderBtnLabel(0);
             generateReportBtn.disabled = true;
-            
+            const elapsedTimer = setInterval(() => {
+                const sec = Math.floor((Date.now() - startTime) / 1000);
+                generateReportBtn.innerHTML = renderBtnLabel(sec);
+            }, 1000);
+
             try {
                 const response = await fetch('/api/report/generate', {
                     method: 'POST',
@@ -699,13 +706,21 @@ document.addEventListener('DOMContentLoaded', async () => {
                     throw new Error(errorMsg);
                 }
                 
+                const reportMd = result.report;
+                const docxTitle = `${month}_Litigation_Report`;
                 if (reportResultContainer) {
-                    reportResultContainer.innerHTML = marked.parse(result.report);
+                    // 결과 상단에 .docx 저장 버튼(고정 표시) + 본문
+                    reportResultContainer.innerHTML =
+                        `<div class="report-toolbar">
+                            <button type="button" class="report-docx-btn">📄 Word(.docx)로 저장</button>
+                         </div>` + marked.parse(reportMd);
                     reportResultContainer.style.display = 'block';
+                    const topDocxBtn = reportResultContainer.querySelector('.report-docx-btn');
+                    if (topDocxBtn) topDocxBtn.onclick = () => downloadReportAsDocx(reportMd, docxTitle);
                 }
                 if (downloadDocxBtn) {
                     downloadDocxBtn.style.display = 'block';
-                    downloadDocxBtn.onclick = () => downloadReportAsDocx(result.report, `${month}_Litigation_Report`);
+                    downloadDocxBtn.onclick = () => downloadReportAsDocx(reportMd, docxTitle);
                 }
                 
             } catch (err) {
@@ -730,6 +745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     reportResultContainer.style.display = 'block';
                 }
             } finally {
+                clearInterval(elapsedTimer);
                 generateReportBtn.innerHTML = '🚀 보고서 생성 시작';
                 generateReportBtn.disabled = false;
             }
