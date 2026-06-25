@@ -612,6 +612,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     const generateReportBtn = document.getElementById('generate-report-btn');
     const closeReportBtn = document.getElementById('close-report-btn');
 
+    // 연/월 드롭다운 채우기 (type="month" 미지원 브라우저 대비 크로스브라우저 처리)
+    const populateMonthPicker = () => {
+        const yearSel = document.getElementById('report-year-input');
+        const monthSel = document.getElementById('report-month-num-input');
+        if (!yearSel || !monthSel || yearSel.options.length > 0) return; // 한 번만 채움
+        const now = new Date();
+        const curYear = now.getFullYear();
+        // 데이터 범위를 넉넉히 커버: (현재-3) ~ (현재+1)년, 최신 연도가 위로 오도록 내림차순
+        for (let y = curYear + 1; y >= curYear - 3; y--) {
+            const opt = document.createElement('option');
+            opt.value = String(y);
+            opt.textContent = `${y}년`;
+            yearSel.appendChild(opt);
+        }
+        for (let m = 1; m <= 12; m++) {
+            const mm = String(m).padStart(2, '0');
+            const opt = document.createElement('option');
+            opt.value = mm;
+            opt.textContent = `${mm}월`;
+            monthSel.appendChild(opt);
+        }
+        // 기본값: 현재 연/월
+        yearSel.value = String(curYear);
+        monthSel.value = String(now.getMonth() + 1).padStart(2, '0');
+    };
+
     if (reportMenuBtn && reportModal) {
         reportMenuBtn.onclick = () => {
             const pw = prompt("이 메뉴는 접근이 제한되어 있습니다. 암호를 입력해주세요.");
@@ -619,6 +645,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (pw !== null) alert("암호가 일치하지 않습니다.");
                 return;
             }
+            populateMonthPicker();
             reportModal.style.display = 'flex';
             const res = document.getElementById('report-result-container');
             const dnx = document.getElementById('download-docx-btn');
@@ -632,22 +659,26 @@ document.addEventListener('DOMContentLoaded', async () => {
         
         generateReportBtn.onclick = async () => {
             const typeSelect = document.getElementById('report-type-select');
-            const monthInput = document.getElementById('report-month-input');
+            const yearInput = document.getElementById('report-year-input');
+            const monthNumInput = document.getElementById('report-month-num-input');
             const csvSelect = document.getElementById('csv-select');
             const reportResultContainer = document.getElementById('report-result-container');
             const downloadDocxBtn = document.getElementById('download-docx-btn');
 
-            if (!typeSelect || !monthInput || !csvSelect) {
+            if (!typeSelect || !yearInput || !monthNumInput || !csvSelect) {
                 console.error("Required report fields missing");
                 return;
             }
 
             const type = typeSelect.value;
-            const month = monthInput.value;
+            // 연/월 드롭다운을 'YYYY-MM' 형식으로 조합
+            const month = (yearInput.value && monthNumInput.value)
+                ? `${yearInput.value}-${monthNumInput.value}`
+                : "";
             const fileName = csvSelect.value;
 
             if (!month) {
-                alert("대상 월을 선택해 주세요.");
+                alert("대상 월(연도와 월)을 선택해 주세요.");
                 return;
             }
             
@@ -679,9 +710,23 @@ document.addEventListener('DOMContentLoaded', async () => {
                 
             } catch (err) {
                 console.error("Report Generation Error:", err);
-                alert(`⚠️ 오류 발생: ${err.message}\n\n도움말: 만약 API Key 관련 오류라면, README.md의 'Gemini AI 설정' 가이드를 참고하여 환경변수를 등록해 주세요.`);
+                // fetch() 자체가 실패하면(TypeError) 서버에 닿지 못했거나 응답이 끊긴 것:
+                // 서버 미실행/포트 오류 또는 보고서 생성이 길어져 연결이 타임아웃된 경우.
+                // HTTP 오류 응답(예: API Key 미설정 500)은 위에서 throw new Error(detail)로 구분됨.
+                const isNetworkError = (err instanceof TypeError);
+                const helpHtml = isNetworkError
+                    ? `<p>서버에 연결하지 못했거나 응답이 끊겼습니다. 다음을 확인해 주세요:</p>
+                       <ul>
+                         <li>대시보드 서버가 실행 중인지 (<code>http://localhost:8007</code>)</li>
+                         <li>보고서 생성에 시간이 오래 걸려 연결이 끊겼는지 — 잠시 후 다시 시도</li>
+                       </ul>`
+                    : `<p>도움말: 서버 실행 시 <code>GEMINI_API_KEY</code> 환경변수가 올바르게 설정되었는지 확인해 주세요.</p>`;
+                const alertHelp = isNetworkError
+                    ? "서버 연결 실패 또는 응답 시간 초과입니다. 서버 실행 상태(http://localhost:8007)를 확인하고 잠시 후 다시 시도해 주세요."
+                    : "만약 API Key 관련 오류라면, README.md의 'Gemini AI 설정' 가이드를 참고하여 환경변수(GEMINI_API_KEY)를 등록해 주세요.";
+                alert(`⚠️ 오류 발생: ${err.message}\n\n도움말: ${alertHelp}`);
                 if (reportResultContainer) {
-                    reportResultContainer.innerHTML = `<div class="error-box"><h3>Report Generation Error</h3><p>${err.message}</p><p>도움말: 서버 실행 시 <code>GEMINI_API_KEY</code> 환경변수가 올바르게 설정되었는지 확인해 주세요.</p></div>`;
+                    reportResultContainer.innerHTML = `<div class="error-box"><h3>Report Generation Error</h3><p>${err.message}</p>${helpHtml}</div>`;
                     reportResultContainer.style.display = 'block';
                 }
             } finally {

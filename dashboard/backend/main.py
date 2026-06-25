@@ -286,9 +286,14 @@ def get_statistics(file_name: Optional[str] = Query(None)):
     return stats
 
 @app.post("/api/report/generate")
-async def generate_report(request: dict):
+def generate_report(request: dict):
     """
     Generates a monthly report using Gemini.
+
+    NOTE: 동기(`def`) 엔드포인트로 선언해 FastAPI가 스레드풀에서 실행하도록 한다.
+    내부의 `model.generate_content()`는 수십 초가 걸릴 수 있는 블로킹 호출이라,
+    `async def`로 두면 이벤트 루프가 통째로 멈춰 다른 요청 처리가 막히고
+    연결이 끊겨 클라이언트에서 NetworkError가 발생할 수 있다.
     """
     report_type = request.get("type")
     month = request.get("month") # YYYY-MM
