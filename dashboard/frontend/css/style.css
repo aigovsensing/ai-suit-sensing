@@ -3327,8 +3327,14 @@ main {
     color: #0f172a;
     background: #ffffff;
 }
-.report-modal-content .report-result {
-    color: #e8edf4 !important;
+/* 본문은 흰색으로 — .markdown-body p/li 가 var(--text-main)(밝은 테마에선 진갈색)을
+   p/li 에 '직접' 지정하므로, 컨테이너 상속색만으론 안 되고 p/li/td 를 직접 덮어야 한다. */
+.report-modal-content .report-result,
+.report-modal-content .report-result p,
+.report-modal-content .report-result li,
+.report-modal-content .report-result td,
+.report-modal-content .report-result span {
+    color: #ffffff !important;
 }
 .report-modal-content .report-result h1,
 .report-modal-content .report-result h2,
@@ -3342,6 +3348,35 @@ main {
 }
 .report-modal-content .report-result strong {
     color: #fde68a !important;
+}
+
+/* 결과 상단 .docx 저장 툴바 — 스크롤해도 상단에 고정 */
+.report-modal-content .report-toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    display: flex;
+    justify-content: flex-end;
+    padding: 4px 0 12px;
+    margin-bottom: 8px;
+    background: linear-gradient(to bottom, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+.report-modal-content .report-docx-btn {
+    background: linear-gradient(135deg, #2563eb, #1d4ed8);
+    color: #ffffff !important;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+}
+.report-modal-content .report-docx-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
 }
 
 /* 스크롤바 정리: 결과 영역의 자체 스크롤을 제거해 모달 하나만 스크롤되게 함 */
