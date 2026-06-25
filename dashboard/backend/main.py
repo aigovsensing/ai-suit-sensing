@@ -450,19 +450,26 @@ async def download_report(request: dict):
     )
 
 # Mount frontend static files
-app.mount("/css", StaticFiles(directory="frontend/css"), name="css")
-app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
-app.mount("/assets", StaticFiles(directory="frontend/assets"), name="assets")
-app.mount("/img", StaticFiles(directory="img"), name="img")
+# 프로젝트 루트(= dashboard/)를 main.py 위치 기준 절대경로로 계산한다.
+# 상대경로(directory="frontend/css")는 실행 위치(CWD)에 의존해, 모노레포로
+# 폴더를 옮긴 뒤 다른 위치에서 실행하면 정적 파일이 404가 날 수 있다.
+# → 모든 정적 마운트/응답을 _base_dir 기준 절대경로로 통일해 CWD와 무관하게 동작.
+_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+_frontend_dir = os.path.join(_base_dir, "frontend")
+
+app.mount("/css", StaticFiles(directory=os.path.join(_frontend_dir, "css")), name="css")
+app.mount("/js", StaticFiles(directory=os.path.join(_frontend_dir, "js")), name="js")
+app.mount("/assets", StaticFiles(directory=os.path.join(_frontend_dir, "assets")), name="assets")
+app.mount("/img", StaticFiles(directory=os.path.join(_base_dir, "img")), name="img")
+app.mount("/timeline", StaticFiles(directory=os.path.join(_base_dir, "timeline")), name="timeline")
+# 매뉴얼 문서(api_guide.md / user_guide.md 등)는 frontend/manual/ 에 있다.
+# 이 마운트가 없으면 /manual/* 요청이 404 → "Documentation file not found"로 실패한다.
+app.mount("/manual", StaticFiles(directory=os.path.join(_frontend_dir, "manual")), name="manual")
 
 @app.get("/")
 def read_root():
-    return FileResponse("frontend/index.html")
+    return FileResponse(os.path.join(_frontend_dir, "index.html"))
 
 @app.get("/lineage.html")
 def read_lineage():
-    return FileResponse("frontend/lineage.html")
-
-# Fallback for any other static files in frontend root
-_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-app.mount("/timeline", StaticFiles(directory=os.path.join(_base_dir, "timeline")), name="timeline")
+    return FileResponse(os.path.join(_frontend_dir, "lineage.html"))
