@@ -3300,6 +3300,73 @@ main {
     color: var(--primary);
 }
 
+/* =========================================================
+   보고서 모달 가독성 + 스크롤바 정리
+   모달은 테마와 무관하게 항상 어두운 배경을 강제하는데(.report-modal-content),
+   글자색이 테마 변수(--text-main 등)를 따라가 밝은 테마에서는 '어두운 글자 +
+   어두운 배경'이 되어 흐릿하게 보였다. → 모달 내부는 고정 밝은 색으로 덮는다.
+   ========================================================= */
+.report-modal-content {
+    color: #e8edf4 !important;
+}
+.report-modal-content .detail-header h2,
+.report-modal-content h2 {
+    color: #f8fafc !important;
+}
+.report-modal-content .report-field label {
+    color: #cbd5e1 !important;
+}
+.report-modal-content .report-field select,
+.report-modal-content .report-field input {
+    color: #f8fafc !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    border-color: rgba(255, 255, 255, 0.18) !important;
+}
+/* select 펼침 목록(브라우저 기본 흰 배경)에서도 글자가 보이도록 */
+.report-modal-content .report-field option {
+    color: #0f172a;
+    background: #ffffff;
+}
+.report-modal-content .report-result {
+    color: #e8edf4 !important;
+}
+.report-modal-content .report-result h1,
+.report-modal-content .report-result h2,
+.report-modal-content .report-result h3 {
+    color: #fbbf24 !important;            /* 고정 앰버 — 어두운 배경에서 또렷 */
+    border-bottom-color: rgba(255, 255, 255, 0.12) !important;
+}
+.report-modal-content .report-result th {
+    color: #fbbf24 !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+}
+.report-modal-content .report-result strong {
+    color: #fde68a !important;
+}
+
+/* 스크롤바 정리: 결과 영역의 자체 스크롤을 제거해 모달 하나만 스크롤되게 함 */
+.report-modal-content .report-result {
+    max-height: none !important;
+    overflow: visible !important;
+}
+/* 모달 스크롤바를 슬림하고 은은하게 */
+.report-modal-content::-webkit-scrollbar {
+    width: 10px;
+}
+.report-modal-content::-webkit-scrollbar-track {
+    background: transparent;
+}
+.report-modal-content::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.18);
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+}
+.report-modal-content::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.32);
+    background-clip: padding-box;
+}
+
 /* Loader Animation */
 .loader {
     width: 20px;
