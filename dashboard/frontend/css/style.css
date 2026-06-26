@@ -3172,10 +3172,13 @@ main {
 
 /* Enhanced Report Modal UI */
 .report-modal-content {
-    background: rgba(15, 23, 42, 0.95) !important;
+    /* 검정 backdrop과 구분되도록 한 단계 밝은 슬레이트 표면 + 청록 글로우 테두리 */
+    background: linear-gradient(180deg, #243349 0%, #1b2740 100%) !important;
     backdrop-filter: blur(20px) !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+    border: 1px solid rgba(125, 211, 252, 0.35) !important;
+    box-shadow: 0 30px 70px -10px rgba(0, 0, 0, 0.65),
+                0 0 0 1px rgba(255, 255, 255, 0.04),
+                0 0 40px rgba(56, 189, 248, 0.12) !important;
     max-width: 900px !important;
     width: 95% !important;
 }
@@ -3362,7 +3365,7 @@ main {
     background: linear-gradient(to bottom, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.92));
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
-.report-modal-content .report-docx-btn {
+.report-modal-content .report-pdf-btn {
     background: linear-gradient(135deg, #2563eb, #1d4ed8);
     color: #ffffff !important;
     border: none;
@@ -3374,7 +3377,7 @@ main {
     transition: transform 0.15s ease, box-shadow 0.15s ease;
     box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
-.report-modal-content .report-docx-btn:hover {
+.report-modal-content .report-pdf-btn:hover {
     transform: translateY(-1px);
     box-shadow: 0 6px 18px rgba(37, 99, 235, 0.5);
 }
@@ -3400,6 +3403,23 @@ main {
 .report-modal-content::-webkit-scrollbar-thumb:hover {
     background: rgba(255, 255, 255, 0.32);
     background-clip: padding-box;
+}
+
+/* 하단 액션 영역: 기본이 흰색 배경(.modal-actions { background:#f8fafc })이라
+   어두운 모달과 충돌 → 모달 톤에 맞춰 투명/다크로 정리 */
+.report-modal-content .modal-actions {
+    background: transparent !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
+    padding: 18px 0 0 !important;
+    margin-top: 8px;
+}
+.report-modal-content .modal-actions .btn-secondary {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #e8edf4 !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+}
+.report-modal-content .modal-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.16) !important;
 }
 
 /* Loader Animation */

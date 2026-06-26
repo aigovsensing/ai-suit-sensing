@@ -648,9 +648,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             populateMonthPicker();
             reportModal.style.display = 'flex';
             const res = document.getElementById('report-result-container');
-            const dnx = document.getElementById('download-docx-btn');
             if (res) res.style.display = 'none';
-            if (dnx) dnx.style.display = 'none';
         };
     }
 
@@ -663,7 +661,6 @@ document.addEventListener('DOMContentLoaded', async () => {
             const monthNumInput = document.getElementById('report-month-num-input');
             const csvSelect = document.getElementById('csv-select');
             const reportResultContainer = document.getElementById('report-result-container');
-            const downloadDocxBtn = document.getElementById('download-docx-btn');
 
             if (!typeSelect || !yearInput || !monthNumInput || !csvSelect) {
                 console.error("Required report fields missing");
@@ -707,20 +704,16 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
                 
                 const reportMd = result.report;
-                const docxTitle = `${month}_Litigation_Report`;
+                const reportTitle = `${month}_Litigation_Report`;
                 if (reportResultContainer) {
-                    // 결과 상단에 .docx 저장 버튼(고정 표시) + 본문
+                    // 결과 상단에 PDF 저장 버튼(고정 표시) + 본문
                     reportResultContainer.innerHTML =
                         `<div class="report-toolbar">
-                            <button type="button" class="report-docx-btn">📄 Word(.docx)로 저장</button>
+                            <button type="button" class="report-pdf-btn">📄 PDF 문서로 저장하기</button>
                          </div>` + marked.parse(reportMd);
                     reportResultContainer.style.display = 'block';
-                    const topDocxBtn = reportResultContainer.querySelector('.report-docx-btn');
-                    if (topDocxBtn) topDocxBtn.onclick = () => downloadReportAsDocx(reportMd, docxTitle);
-                }
-                if (downloadDocxBtn) {
-                    downloadDocxBtn.style.display = 'block';
-                    downloadDocxBtn.onclick = () => downloadReportAsDocx(reportMd, docxTitle);
+                    const topPdfBtn = reportResultContainer.querySelector('.report-pdf-btn');
+                    if (topPdfBtn) topPdfBtn.onclick = () => downloadReportAsPdf(reportMd, reportTitle);
                 }
                 
             } catch (err) {
@@ -1303,26 +1296,48 @@ async function openDocModal(type) {
     }
 }
 
-async function downloadReportAsDocx(content, title) {
+// 마크다운 보고서를 '렌더링된 모습 그대로' PDF로 저장한다.
+// 별도 PDF 라이브러리 없이, 깨끗한 인쇄용 문서를 새 창에 그려 브라우저의
+// 인쇄 → 'PDF로 저장'을 띄운다. (원시 마크다운이 아니라 가독성 좋은 렌더 결과가 저장됨)
+function downloadReportAsPdf(content, title) {
     try {
-        const response = await fetch('/api/report/download', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ content, title })
-        });
-        
-        if (!response.ok) throw new Error("다운로드 실패");
-        
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${title}.docx`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
+        const bodyHtml = (typeof marked !== 'undefined') ? marked.parse(content) : content;
+        const win = window.open('', '_blank');
+        if (!win) {
+            alert("팝업이 차단되었습니다. 브라우저에서 팝업을 허용한 뒤 다시 시도해 주세요.");
+            return;
+        }
+        const printCss = `
+            @page { margin: 18mm; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Malgun Gothic','Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+                   color:#1a1a1a; line-height:1.7; font-size:12pt; margin:0; }
+            .doc-title { font-size:22pt; font-weight:800; color:#0b3d66; margin:0 0 2px; }
+            .doc-meta { color:#666; font-size:10pt; margin-bottom:20px; border-bottom:2px solid #0b3d66; padding-bottom:10px; }
+            h1,h2,h3 { color:#0b3d66; margin:1.3em 0 .5em; line-height:1.3; page-break-after:avoid; }
+            h1 { font-size:18pt; } h2 { font-size:15pt; border-bottom:1px solid #ccc; padding-bottom:5px; } h3 { font-size:13pt; }
+            p { margin:0 0 12px; } ul,ol { padding-left:22px; margin:0 0 12px; }
+            li { margin-bottom:6px; }
+            strong { color:#0b3d66; }
+            table { border-collapse:collapse; width:100%; margin:14px 0; font-size:10.5pt; page-break-inside:avoid; }
+            th,td { border:1px solid #999; padding:6px 9px; text-align:left; vertical-align:top; }
+            th { background:#eef2f7; color:#0b3d66; }
+            code { background:#f3f3f3; padding:1px 5px; border-radius:3px; font-size:0.92em; }
+            blockquote { margin:14px 0; padding:10px 16px; background:#f5f8fc; border-left:4px solid #0b3d66; color:#333; }
+        `;
+        win.document.write(
+            `<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8">` +
+            `<title>${title}</title><style>${printCss}</style></head>` +
+            `<body><div class="doc-title">AI 소송 월간 동향 보고서</div>` +
+            `<div class="doc-meta">${title}</div>` +
+            `${bodyHtml}</body></html>`
+        );
+        win.document.close();
+        win.focus();
+        // 콘텐츠가 그려진 뒤 인쇄 대화상자(→ PDF로 저장) 표시
+        setTimeout(() => win.print(), 350);
     } catch (err) {
-        alert(err.message);
+        alert("PDF 저장 중 오류가 발생했습니다: " + err.message);
     }
 }
 
