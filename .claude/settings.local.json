@@ -30,7 +30,25 @@
       "Bash(python3 -m tests.test_pipeline)",
       "Bash(python3 -c \"import sys; sys.path.insert\\(0,'.'\\); from src import csv_store as cs; o=cs.load\\('../dashboard/data/aisuit_20260624_1741.csv'\\); print\\('records:', len\\(o.records\\)\\); print\\('new rec No181 docket:', o.by_docket\\(\\).get\\('1:26-cv-99999',{}\\).get\\('No'\\)\\)\")",
       "Bash(rm -rf proposals/*)",
-      "Bash(git reset *)"
+      "Bash(git reset *)",
+      "Bash(git commit -m ' *)",
+      "Bash(python3 -m json.tool tracker/scratch/comments.json)",
+      "Bash(python3 -c \"import json; json.load\\(open\\('tracker/scratch/comments.json', encoding='utf-8-sig'\\)\\); print\\('✅ JSON 유효성 OK \\(BOM 포함, 구조 정상\\)'\\)\")",
+      "Bash(python3 -c \"import json; json.load\\(open\\('tracker/scratch/comments.json', encoding='utf-8-sig'\\)\\); print\\('✅ JSON 유효성 OK'\\)\")",
+      "Bash(python3 -m py_compile tracker/src/gemini.py tracker/src/dedup.py tracker/src/trend.py dashboard/backend/main.py)",
+      "Bash(python3 -m py_compile dashboard/backend/main.py)",
+      "Bash(node --check dashboard/frontend/js/app.js)",
+      "Bash(echo \"=== /etc/environment 에 정의된 변수 이름\\(값 제외\\) ===\"; grep -oE '^[A-Za-z_][A-Za-z0-9_]*=' /etc/environment 2>/dev/null | tr -d '=' || echo \"\\(파일 없음/권한 없음\\)\" *)",
+      "Bash(git checkout *)",
+      "Bash(awk '/theme-illustration/{found=1} found{print NR\": \"$0} /}/{if\\(found && ++c>0 && $0 ~ /^}/\\){exit}}' dashboard/frontend/css/style.css)",
+      "Bash(awk '{o+=gsub\\(/{/,\"{\"\\); c+=gsub\\(/}/,\"}\"\\)} END{print \"open=\"o\" close=\"c}')",
+      "Bash(awk '{o+=gsub\\(/{/,\"{\"\\); c+=gsub\\(/}/,\"}\"\\)} END{print \"open=\"o\" close=\"c}' dashboard/frontend/css/style.css)",
+      "Bash(docker-compose version *)",
+      "Bash(docker compose *)",
+      "Bash(python3 -m py_compile tracker/src/dedup.py tracker/src/render.py)",
+      "Bash(git fetch *)",
+      "Bash(git rebase *)",
+      "Bash(git stash *)"
     ]
   }
 }
