@@ -298,7 +298,9 @@ def render_markdown(
     # 뉴스 테이블
     lines.append("### 📰 AI Suit News")
     if lawsuits:
-        debug_log("'News' is printed.")            
+        debug_log("'News' is printed.")
+        lines.append("")
+        lines.append("> ℹ️ **중복건수** 표기: `제`=제목 완전일치, `키`=키워드(BM25) 유사, `의`=의미론적 유사 (예: `8 (제:6 키:2 의:0)`)")
         lines.append("")
         lines.append("| No. | 기사일자 | 제목 | 소송번호 | 조건 (주요 키워드) | 소송사유 | 감지 레벨⬇️ | 중복건수 |")
         lines.append(_md_sep(8))

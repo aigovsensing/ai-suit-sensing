@@ -302,14 +302,13 @@ def apply_deduplication(md: str, comments: List[dict]) -> tuple[str, int, int]:
                 if total_dup == 0:
                     row[dup_idx] = "0"
                 else:
-                    parts = []
-                    if details.get("제목", 0) > 0:
-                        parts.append(f"제목:{details['제목']}")
-                    if details.get("키워드", 0) > 0:
-                        parts.append(f"키워드:{details['키워드']}")
-                    if details.get("의미", 0) > 0:
-                        parts.append(f"의미:{details['의미']}")
-                    row[dup_idx] = f"{total_dup} ({', '.join(parts)})"
+                    # 3종(제목/키워드/의미) 모두 표시하되, GitHub 표 폭을 고려해 약어로 압축
+                    # 예: "8 (제:6 키:2 의:0)"  (제=제목 일치, 키=BM25 키워드, 의=의미론적)
+                    row[dup_idx] = (
+                        f"{total_dup} (제:{details.get('제목', 0)} "
+                        f"키:{details.get('키워드', 0)} "
+                        f"의:{details.get('의미', 0)})"
+                    )
             non_skip_rows.append(row)
             new_article_count += 1
 
