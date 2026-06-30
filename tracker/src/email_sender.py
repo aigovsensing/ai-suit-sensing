@@ -52,7 +52,7 @@ _HTML_TEMPLATE = """\
         <tr>
           <td style="background:#f8f9fa;padding:16px 32px;border-top:1px solid #e0e0e0;">
             <p style="margin:0;font-size:11px;color:#9e9e9e;text-align:center;">
-              이 메일은 <strong>ai-suit-tracker</strong> 자동화 시스템에서 발송되었습니다.
+              이 메일은 <strong><a href="https://github.com/aigovsensing/ai-suit-sensing/" style="color:#1a73e8;text-decoration:underline;">ai-suit-tracker</a></strong> 자동화 시스템에서 발송되었습니다.
               &nbsp;|&nbsp; Powered by Gemini &amp; GitHub Actions
             </p>
           </td>
