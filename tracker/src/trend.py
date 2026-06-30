@@ -87,7 +87,7 @@ def generate_daily_report_from_data(news_data: dict, case_data: dict, report_dat
 {chr(10).join(case_lines) if case_lines else "오늘 수집된 소송 사건이 없습니다."}
 
 [작성 지침]
-1. 제목은 "## 🧠 (석간뉴스: {today_kst}) 당일 AI학습데이터 소송건 요약 (Gemini)"로 시작해주세요. (날짜 {today_kst} 는 반드시 그대로 포함)
+1. 제목은 "## 🧠 (석간뉴스: {today_kst}) 당일 AI학습데이터 소송건 요약"으로 시작해주세요. (날짜 {today_kst} 는 반드시 그대로 포함)
 2. 오늘 발생한 가장 중요한 핵심 이슈를 2~3문장으로 먼저 요약해주세요.
 3. 주요 뉴스 및 소송 사건들을 그룹화하거나 개별적으로 분석하여 가독성 있게 정리해주세요.
 4. 기술적/법적 쟁점이 있는 경우 간략히 언급해주세요.
