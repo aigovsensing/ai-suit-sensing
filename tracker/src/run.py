@@ -209,7 +209,7 @@ def main() -> None:
 
             if not trend_already_exists:
                 debug_log(f"Gemini 동향 요약 기능 활성화 (설정 기간: {trend_days}일)")
-                trend_summary = generate_trend_summary(lawsuits, cl_cases, trend_days)
+                trend_summary = generate_trend_summary(lawsuits, cl_cases, trend_days, report_date=now_kst.strftime('%Y-%m-%d'))
                 if trend_summary:
                     create_comment(owner, repo, gh_token, issue_no, trend_summary)
                     debug_log(f"Issue #{issue_no} Gemini 동향 요약 댓글 업로드 완료")

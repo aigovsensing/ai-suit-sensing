@@ -1,4 +1,5 @@
 from __future__ import annotations
+import re
 import requests
 from typing import Dict, List
 from .dedup import generate_consolidated_report
@@ -117,8 +118,13 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
                 from .dedup import get_consolidated_data
                 from .trend import generate_daily_report_from_data
                 u_news, u_cases, _ = get_consolidated_data(comments)
-                
-                daily_summary = generate_daily_report_from_data(u_news, u_cases)
+
+                # 석간뉴스 날짜는 '닫히는 이슈' 제목의 날짜와 동일해야 한다.
+                # 이슈 제목 형식: "{base_title} (YYYY-MM-DD Weekday)"
+                m_date = re.search(r"\d{4}-\d{2}-\d{2}", t)
+                report_date = m_date.group(0) if m_date else None
+
+                daily_summary = generate_daily_report_from_data(u_news, u_cases, report_date=report_date)
                 if daily_summary:
                     create_comment(owner, repo, token, num, daily_summary)
                     # 이메일 발송
