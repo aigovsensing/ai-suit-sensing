@@ -4,8 +4,7 @@
   "smtp_port": 587,
   "sender": "leemgs@gmail.com",
   "receivers": [
-    "ai.gov.sensing@gmail.com",
     "leemgs@gmail.com",
-    "geunsik.lim@samsung.com"
+    "ai.gov.sensing@samsung.com"
   ]
 }
