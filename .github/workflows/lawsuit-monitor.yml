@@ -60,6 +60,8 @@ jobs:
           DEBUG: ${{ vars.DEBUG }}
           # 이메일 전송 활성화 (1: 활성화, 0: 비활성화)
           ENABLE_EMAIL_SENDER: ${{ vars.ENABLE_EMAIL_SENDER || '0' }}
+          # 석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23). 미설정 시 코드 기본값 21시
+          EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR }}
           # 이메일 발송용 SMTP 앱 비밀번호
           SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
         run: |
