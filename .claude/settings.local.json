@@ -48,7 +48,15 @@
       "Bash(python3 -m py_compile tracker/src/dedup.py tracker/src/render.py)",
       "Bash(git fetch *)",
       "Bash(git rebase *)",
-      "Bash(git stash *)"
+      "Bash(git stash *)",
+      "Bash(python3 -m py_compile tracker/src/email_sender.py)",
+      "Bash(git pull *)",
+      "Bash(python3 -m py_compile tracker/src/trend.py)",
+      "Bash(python3 -m py_compile tracker/src/trend.py tracker/src/run.py tracker/src/github_issue.py)",
+      "Bash(python3 -m py_compile tracker/src/run.py tracker/src/github_issue.py tracker/src/trend.py)",
+      "Bash(grep -n \"ENABLE_EMAIL_SENDER\\\\|PREVIOUS_ITEM_DEDUP_DAYS\\\\|LOOKBACK_DAYS\\\\|| \\\\`DEBUG\\\\`\" tracker/README.md)",
+      "Bash(python3 -m py_compile tracker/src/run.py)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
