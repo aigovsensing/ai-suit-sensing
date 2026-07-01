@@ -204,7 +204,7 @@ def main() -> None:
                 debug_log(f"GEMINI_AISUIT_TREND_DAYS가 숫자가 아니므로 LOOKBACK_DAYS({lookback_days})를 사용합니다.")
 
             # [FIX] 해당 기간(trend_days)의 동향 요약이 이미 있는지 확인 (중복 출력 방지 및 설정 변경 반영)
-            trend_title_marker = f"{trend_days}일간의 소송센싱 주요 동향 현황"
+            trend_title_marker = f"{trend_days}일간의 AI학습데이터 소송 동향"
             trend_already_exists = any(trend_title_marker in (c.get("body") or "") for c in current_comments)
 
             if not trend_already_exists:
@@ -223,12 +223,12 @@ def main() -> None:
             debug_log(f"Gemini 동향 요약 생성 중 오류 발생: {e}")
     else:
         # 이미 안내 메시지나 동향 요약이 있는지 확인
-        trend_any_exists = any("소송센싱 주요 동향 현황" in (c.get("body") or "") for c in current_comments)
+        trend_any_exists = any("AI학습데이터 소송 동향" in (c.get("body") or "") for c in current_comments)
         if not trend_any_exists:
             skip_message = (
                 "> [!NOTE]\n"
                 "> **🤖 Gemini 인텔리전트 동향 요약 기능 안내**\n"
-                f"> \"🗓️ (조간뉴스) {lookback_days}일간의 소송센싱 주요 동향 현황\"이 Skip 처리되었습니다. \n"
+                f"> \"🗓️ (조간뉴스) {lookback_days}일간의 AI학습데이터 소송 동향\"이 Skip 처리되었습니다. \n"
                 "> 이 기능을 사용하려면 [README.md](./README.md) 파일을 참고하여 관련 환경변수를 추가해 주세요. ✨"
             )
             create_comment(owner, repo, gh_token, issue_no, skip_message)
@@ -249,6 +249,34 @@ def main() -> None:
     comment_body = f"\n\n{md}"
     create_comment(owner, repo, gh_token, issue_no, comment_body)
     debug_log(f"Issue #{issue_no} 메인 리포트 댓글 업로드 완료")
+
+    # 4-5) 석간뉴스(당일 저녁 요약) — KST 저녁(기본 21시) 이후 실행 시 '당일 이슈'에 발행
+    # 기존에는 다음 날 이슈 Close 시점(익일 새벽)에만 생성돼 늦게 나갔음. 저녁 실행에서
+    # 미리 생성하고, Close 시점에는 이미 있으면 건너뛴다(중복 방지, github_issue.py 참고).
+    try:
+        evening_hour = int(os.environ.get("EVENING_REPORT_HOUR", "21"))
+        if now_kst.hour >= evening_hour:
+            fresh_comments = list_comments(owner, repo, gh_token, issue_no)
+            evening_already = any("(석간뉴스" in (c.get("body") or "") for c in fresh_comments)
+            if not evening_already:
+                from .dedup import get_consolidated_data
+                from .trend import generate_daily_report_from_data
+                u_news, u_cases, _ = get_consolidated_data(fresh_comments)
+                daily_summary = generate_daily_report_from_data(
+                    u_news, u_cases, report_date=now_kst.strftime('%Y-%m-%d')
+                )
+                if daily_summary:
+                    create_comment(owner, repo, gh_token, issue_no, daily_summary)
+                    debug_log(f"Issue #{issue_no} 석간뉴스(당일 저녁) 댓글 업로드 완료")
+                    try:
+                        email_subject = get_subject_for_report(daily_summary, "evening")
+                        send_email_report(email_subject, daily_summary)
+                    except Exception as email_err:
+                        print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}")
+            else:
+                debug_log("석간뉴스가 이미 당일 이슈에 존재하여 건너뜁니다.")
+    except Exception as e:
+        debug_log(f"석간뉴스(당일 저녁) 생성 중 오류: {e}")
 
     # 5) Slack 요약 전송
     # ============================================
