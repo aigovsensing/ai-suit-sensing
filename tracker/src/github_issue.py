@@ -114,26 +114,32 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
                 consolidated_report = generate_consolidated_report(comments)
                 create_comment(owner, repo, token, num, consolidated_report)
                 
-                # 2) 당일 신규/업데이트 소송건 요약 보고서 (Gemini)
-                from .dedup import get_consolidated_data
-                from .trend import generate_daily_report_from_data
-                u_news, u_cases, _ = get_consolidated_data(comments)
+                # 2) 당일 신규/업데이트 소송건 요약 보고서(석간뉴스)
+                # 저녁(21시) 실행에서 이미 당일 이슈에 석간뉴스를 발행했다면 중복 생성/발송하지 않는다.
+                evening_already = any("(석간뉴스" in (c.get("body") or "") for c in comments)
+                if evening_already:
+                    import sys
+                    print(f"[INFO] 이슈 #{num}에 석간뉴스가 이미 존재하여 Close 시 재생성을 건너뜁니다.", file=sys.stderr)
+                else:
+                    from .dedup import get_consolidated_data
+                    from .trend import generate_daily_report_from_data
+                    u_news, u_cases, _ = get_consolidated_data(comments)
 
-                # 석간뉴스 날짜는 '닫히는 이슈' 제목의 날짜와 동일해야 한다.
-                # 이슈 제목 형식: "{base_title} (YYYY-MM-DD Weekday)"
-                m_date = re.search(r"\d{4}-\d{2}-\d{2}", t)
-                report_date = m_date.group(0) if m_date else None
+                    # 석간뉴스 날짜는 '닫히는 이슈' 제목의 날짜와 동일해야 한다.
+                    # 이슈 제목 형식: "{base_title} (YYYY-MM-DD Weekday)"
+                    m_date = re.search(r"\d{4}-\d{2}-\d{2}", t)
+                    report_date = m_date.group(0) if m_date else None
 
-                daily_summary = generate_daily_report_from_data(u_news, u_cases, report_date=report_date)
-                if daily_summary:
-                    create_comment(owner, repo, token, num, daily_summary)
-                    # 이메일 발송
-                    try:
-                        email_subject = get_subject_for_report(daily_summary, "evening")
-                        send_email_report(email_subject, daily_summary)
-                    except Exception as email_err:
-                        import sys
-                        print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}", file=sys.stderr)
+                    daily_summary = generate_daily_report_from_data(u_news, u_cases, report_date=report_date)
+                    if daily_summary:
+                        create_comment(owner, repo, token, num, daily_summary)
+                        # 이메일 발송
+                        try:
+                            email_subject = get_subject_for_report(daily_summary, "evening")
+                            send_email_report(email_subject, daily_summary)
+                        except Exception as email_err:
+                            import sys
+                            print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}", file=sys.stderr)
                 
                 # 3) 최종 종료 알림 (footer)
                 final_body = f"--- \n\n{footer}"
