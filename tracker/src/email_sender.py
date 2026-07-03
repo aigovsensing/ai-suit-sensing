@@ -24,8 +24,10 @@ _HTML_TEMPLATE = """\
 <table width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:24px 0;">
   <tr>
     <td align="center">
-      <table width="700" cellpadding="0" cellspacing="0"
-             style="max-width:700px;background:#ffffff;border-radius:10px;
+      <!-- 본문 폭: 고정 700px가 좁아 960px로 확대.
+           width=100% + max-width 조합이라 좁은 화면(모바일)에서는 100%로 줄어든다. -->
+      <table width="960" cellpadding="0" cellspacing="0"
+             style="width:100%;max-width:960px;background:#ffffff;border-radius:10px;
                     box-shadow:0 2px 8px rgba(0,0,0,0.08);overflow:hidden;">
 
         <!-- 헤더 -->
