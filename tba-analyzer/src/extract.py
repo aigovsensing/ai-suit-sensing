@@ -89,7 +89,7 @@ def _parse_json_array(text: str) -> List[Dict]:
         return []
 
 
-def extract_with_llm(text: str, model: str = "gemini-1.5-flash") -> List[Dict[str, str]]:
+def extract_with_llm(text: str, model: str = "gemini-3-flash-preview") -> List[Dict[str, str]]:
     """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
@@ -107,7 +107,7 @@ def extract_with_llm(text: str, model: str = "gemini-1.5-flash") -> List[Dict[st
     return [_validate(r) for r in raw if isinstance(r, dict)]
 
 
-def extract(text: str, *, llm_enabled: bool = True, model: str = "gemini-1.5-flash") -> List[Dict[str, str]]:
+def extract(text: str, *, llm_enabled: bool = True, model: str = "gemini-3-flash-preview") -> List[Dict[str, str]]:
     """이슈 텍스트 → 검증된 소송 레코드 목록."""
     if llm_enabled:
         recs = extract_with_llm(text, model=model)

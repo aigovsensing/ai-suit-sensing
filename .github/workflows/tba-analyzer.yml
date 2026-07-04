@@ -15,9 +15,10 @@ on:
       limit:
         description: "분석할 최근 이슈 수"
         default: "3"
-  # 필요 시 스케줄 활성화 (기본은 수동 실행만)
-  # schedule:
-  #   - cron: "0 1 * * *"  # 매일 KST 10:00
+  # 매일 KST 10:00 자동 실행 — tracker(매시간 센싱)가 쌓은 이슈를 분석해
+  # 변경 제안 PR을 생성한다. 반영 여부는 사람이 PR 검토로 결정(HITL).
+  schedule:
+    - cron: "0 1 * * *"  # UTC 01:00 = KST 10:00
 
 jobs:
   analyze:

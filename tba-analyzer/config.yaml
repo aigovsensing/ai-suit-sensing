@@ -21,7 +21,7 @@ matching:
 # LLM 추출 설정
 llm:
   enabled: true
-  model: "gemini-1.5-flash"
+  model: "gemini-3-flash-preview"
   # API 키는 환경변수 GEMINI_API_KEY 로 주입
 
 # tracker 의 사건 보강 규칙 재사용
