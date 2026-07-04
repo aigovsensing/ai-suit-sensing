@@ -26,7 +26,7 @@ flowchart LR
     subgraph PIPE["ai-suit-sensing 모노레포"]
         direction LR
         T["📡 tracker<br/><b>센싱</b><br/>수집·탐지"]
-        A["🧪 tba-analyzer<br/><b>분석·정리</b><br/>제안 생성 (사람 검토)"]
+        A["🧪 analyzer-tba<br/><b>분석·정리</b><br/>제안 생성 (사람 검토)"]
         D["📊 dashboard<br/><b>시각화</b><br/>열람·추적·조회"]
         T -->|GitHub Issue 리포트| A
         A -->|"정본 CSV (PR 검토 후)"| D
@@ -43,7 +43,7 @@ flowchart LR
 | 컴포넌트 | 역할 | 한 줄 설명 | 원본 저장소 |
 |---|---|---|---|
 | [`tracker/`](./tracker) | 📡 **센싱** | 뉴스·법원 DB에서 AI 소송을 자동 수집해 GitHub Issue/Slack 리포트로 발행 | [aigovsensing/ai-suit-tracker-v02](https://github.com/aigovsensing/ai-suit-tracker-v02) |
-| [`tba-analyzer/`](./tba-analyzer) | 🧪 **분석·정리** | 이슈 리포트를 정본 CSV와 대조해 변경 제안 생성 (반영은 사람 승인 후) | 본 모노레포 신규 추가 |
+| [`analyzer-tba/`](./analyzer-tba) | 🧪 **분석·정리** | 이슈 리포트를 정본 CSV와 대조해 변경 제안 생성 (반영은 사람 승인 후) | 본 모노레포 신규 추가 |
 | [`dashboard/`](./dashboard) | 📊 **시각화** | 정리된 CSV를 지도 히트맵·리니지 그래프·통계로 시각화 | [aigovsensing/ai-suit-dashboard](https://github.com/aigovsensing/ai-suit-dashboard) |
 
 ---
@@ -56,13 +56,13 @@ flowchart LR
 |---|---|---|
 | 수집된 소송 데이터를 **지도/그래프로 보고 싶다** | `dashboard` | [▶ 빠른 시작](#1-dashboard--대시보드-띄우기-가장-쉬움) |
 | 최신 소송을 **자동으로 수집·추적하고 싶다** | `tracker` | [▶ 빠른 시작](#2-tracker--소송-센싱-실행) |
-| 수집된 이슈를 **CSV로 정리·반영하고 싶다** | `tba-analyzer` | [▶ 빠른 시작](#3-tba-analyzer--이슈를-csv로-정리) |
+| 수집된 이슈를 **CSV로 정리·반영하고 싶다** | `analyzer-tba` | [▶ 빠른 시작](#3-analyzer-tba--이슈를-csv로-정리) |
 
 ---
 
 ## 🚀 빠른 시작 (Quick Start)
 
-> **공통 요구사항**: Python 3.10+ (tracker/tba-analyzer는 3.11 권장), git. 일부 AI 기능은 `GEMINI_API_KEY`가 필요합니다([Google AI Studio](https://aistudio.google.com/)에서 무료 발급).
+> **공통 요구사항**: Python 3.10+ (tracker/analyzer-tba는 3.11 권장), git. 일부 AI 기능은 `GEMINI_API_KEY`가 필요합니다([Google AI Studio](https://aistudio.google.com/)에서 무료 발급).
 
 ```bash
 git clone https://github.com/<owner>/ai-suit-sensing.git
@@ -106,12 +106,12 @@ python -m src.run
 정기 자동 실행은 [`.github/workflows/lawsuit-monitor.yml`](./.github/workflows/lawsuit-monitor.yml)(스케줄)로 동작합니다.
 전체 환경변수·옵션은 [tracker/README.md](./tracker/README.md).
 
-### 3. `tba-analyzer` — 이슈를 CSV로 정리
+### 3. `analyzer-tba` — 이슈를 CSV로 정리
 
 `tracker`가 만든 GitHub Issue를 분석해 정본 CSV 변경 제안을 만듭니다.
 
 ```bash
-cd tba-analyzer
+cd analyzer-tba
 pip install -r requirements.txt
 export GEMINI_API_KEY=...   # LLM 추출용
 export GITHUB_TOKEN=...      # 이슈 수집용
@@ -124,14 +124,14 @@ python -m src.run review proposals/changeset_<stamp>.json
 python -m src.run apply  proposals/changeset_<stamp>.json
 ```
 
-→ **권장 검토 방식은 GitHub PR**입니다. [`.github/workflows/tba-analyzer.yml`](./.github/workflows/tba-analyzer.yml)가 후보 CSV를 PR로 자동 생성하므로, **merge=accept / close=reject**로 검토하면 됩니다.
-자세한 내용은 [tba-analyzer/README.md](./tba-analyzer/README.md)와 [구현 계획서](./tba-analyzer/implementation-plan.md).
+→ **권장 검토 방식은 GitHub PR**입니다. [`.github/workflows/analyzer-tba.yml`](./.github/workflows/analyzer-tba.yml)가 후보 CSV를 PR로 자동 생성하므로, **merge=accept / close=reject**로 검토하면 됩니다.
+자세한 내용은 [analyzer-tba/README.md](./analyzer-tba/README.md)와 [구현 계획서](./analyzer-tba/implementation-plan.md).
 
 ---
 
 ## 🔄 데이터 흐름 (Data Flow)
 
-`tba-analyzer`는 기존의 **수동 분석·정리 단계를 자동화**합니다. 단, 소송 데이터는 법적 민감 정보이므로 정본 CSV 반영 여부는 **항상 사람이 PR 검토로 결정**합니다 (*Human-in-the-Loop*).
+`analyzer-tba`는 기존의 **수동 분석·정리 단계를 자동화**합니다. 단, 소송 데이터는 법적 민감 정보이므로 정본 CSV 반영 여부는 **항상 사람이 PR 검토로 결정**합니다 (*Human-in-the-Loop*).
 
 ```mermaid
 sequenceDiagram
@@ -139,7 +139,7 @@ sequenceDiagram
     participant SRC as 🌐 뉴스 / 법원 DB
     participant T as 📡 tracker
     participant GI as 🐙 GitHub Issue
-    participant A as 🧪 tba-analyzer
+    participant A as 🧪 analyzer-tba
     participant H as 👤 검토자
     participant CSV as 🗂️ 정본 CSV
     participant D as 📊 dashboard
@@ -199,7 +199,7 @@ tracker/
 
 자세한 내용은 [tracker/README.md](./tracker/README.md) 참고.
 
-### 2. [`tba-analyzer/`](./tba-analyzer) — 센싱→정리 자동화기 (사람 검토 기반)
+### 2. [`analyzer-tba/`](./analyzer-tba) — 센싱→정리 자동화기 (사람 검토 기반)
 
 `tracker`가 GitHub Issue로 보고한 소송 내용을 분석하여, 기존 정본 CSV(`dashboard/data/*.csv`)와 대조하고 **신규 추가 / 기존 레코드 업데이트** 변경 제안을 생성합니다. 기존에 사람이 수동으로 하던 분석·정리 단계를 자동화하되, 소송 데이터는 법적 민감 정보이므로 **CSV 반영 전에 반드시 사람이 검토(accept/reject)** 하는 *Human-in-the-Loop* 구조입니다.
 
@@ -219,7 +219,7 @@ tracker/
 <summary>디렉터리 구성</summary>
 
 ```
-tba-analyzer/
+analyzer-tba/
 ├── implementation-plan.md  # 설계/로드맵
 ├── config.yaml             # 경로·임계값·모델 설정
 ├── src/
@@ -234,11 +234,11 @@ tba-analyzer/
 ```
 </details>
 
-자세한 내용은 [tba-analyzer/README.md](./tba-analyzer/README.md) 와 [구현 계획서](./tba-analyzer/implementation-plan.md) 참고.
+자세한 내용은 [analyzer-tba/README.md](./analyzer-tba/README.md) 와 [구현 계획서](./analyzer-tba/implementation-plan.md) 참고.
 
 ### 3. [`dashboard/`](./dashboard) — 소송 현황 시각화 (열람/추적/조회)
 
-`tracker`가 센싱하고 `tba-analyzer`(또는 사람)가 정리한 소송 데이터를 `data/*.csv` 파일로 저장하면, `dashboard`는 이 `.csv` 데이터를 기반으로 소송 현황을 **열람·추적·조회**하고, 지도 히트맵·리니지 그래프·통계로 **시각화**하는 분석 플랫폼입니다.
+`tracker`가 센싱하고 `analyzer-tba`(또는 사람)가 정리한 소송 데이터를 `data/*.csv` 파일로 저장하면, `dashboard`는 이 `.csv` 데이터를 기반으로 소송 현황을 **열람·추적·조회**하고, 지도 히트맵·리니지 그래프·통계로 **시각화**하는 분석 플랫폼입니다.
 
 **주요 기능**
 - **인터랙티브 소송 히트맵**: 대륙별 줌인과 피고·학습 데이터 분야(Theme)별 다차원 필터링을 제공합니다.
@@ -279,11 +279,11 @@ dashboard/
 ```
 ai-suit-sensing/
 ├── tracker/        # 소송 센싱 도구 (CourtListener/RECAP & News Extractor)
-├── tba-analyzer/   # TBA: 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
+├── analyzer-tba/   # TBA: 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
 ├── dashboard/      # 소송 현황 대시보드 (AI Litigation Dashboard)
 ├── .github/workflows/
 │   ├── lawsuit-monitor.yml   # tracker 자동 센싱 (스케줄)
-│   └── tba-analyzer.yml      # tba-analyzer 제안 → PR 생성 (수동/스케줄)
+│   └── analyzer-tba.yml      # analyzer-tba 제안 → PR 생성 (수동/스케줄)
 ├── LICENSE
 └── README.md
 ```

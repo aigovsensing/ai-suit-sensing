@@ -9,7 +9,7 @@ from . import csv_store as cs
 def changeset_markdown(changeset: Dict) -> str:
     s = changeset.get("summary", {})
     lines = [
-        "## 🤖 TBA-Analyzer 변경 제안",
+        "## 🤖 Analyzer-TBA 변경 제안",
         "",
         f"- 출처 이슈: {changeset.get('source_issue', 'N/A')}",
         f"- 기준 CSV: `{changeset.get('base_csv', 'N/A')}`",

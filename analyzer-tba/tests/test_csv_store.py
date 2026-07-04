@@ -1,6 +1,6 @@
 """csv_store round-trip / 식별 헬퍼 테스트.
 
-실행: tba-analyzer/ 에서  python -m tests.test_csv_store
+실행: analyzer-tba/ 에서  python -m tests.test_csv_store
 (외부 의존성 없이 표준 라이브러리만 사용)
 """
 import os

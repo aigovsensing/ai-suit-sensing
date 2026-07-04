@@ -1,4 +1,4 @@
-name: tba-analyzer
+name: analyzer-tba
 
 # 검토 방식 A (GitHub PR 기반):
 #   analyze → 후보 CSV 생성 → 브랜치 커밋 → PR 자동 생성
@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: tba-analyzer
+        working-directory: analyzer-tba
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -63,17 +63,17 @@ jobs:
           MD=$(python -c "import json;print(json.load(open('$LAST'))['markdown'])")
           CSV=$(python -c "import json;print(json.load(open('$LAST'))['candidate_csv'])")
 
-          BRANCH="tba/analyzer-${STAMP}"
+          BRANCH="analyzer-tba/${STAMP}"
           cd "$GITHUB_WORKSPACE"  # repo root
-          git config user.name "tba-analyzer[bot]"
-          git config user.email "tba-analyzer@users.noreply.github.com"
+          git config user.name "analyzer-tba[bot]"
+          git config user.email "analyzer-tba@users.noreply.github.com"
           git checkout -b "$BRANCH"
           git add "$CSV"
-          git commit -m "data: tba-analyzer 제안 (NEW ${NEW}/UPDATE ${UPD}) [${STAMP}]"
+          git commit -m "data: analyzer-tba 제안 (NEW ${NEW}/UPDATE ${UPD}) [${STAMP}]"
           git push origin "$BRANCH"
 
           gh pr create \
             --title "🤖 소송 데이터 갱신 제안 (NEW ${NEW}/UPDATE ${UPD}) — ${STAMP}" \
             --body-file "$MD" \
             --base main --head "$BRANCH" \
-            --label "tba-analyzer"
+            --label "analyzer-tba"

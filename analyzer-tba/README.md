@@ -1,4 +1,4 @@
-# TBA-Analyzer
+# Analyzer-TBA
 
 `tracker`(센싱)와 `dashboard`(시각화) 사이의 **수동 분석/정리 단계를 자동화**하는 분석기.
 GitHub Issue로 보고된 소송 내용을 분석해 정본 CSV(`dashboard/data/*.csv`)와 대조하고,
@@ -20,7 +20,7 @@ ingest(이슈 수집) → extract(LLM 구조화) → match(기존 CSV 대조)
 ## 설치
 
 ```bash
-cd tba-analyzer
+cd analyzer-tba
 pip install -r requirements.txt
 export GEMINI_API_KEY=...   # LLM 추출용
 export GITHUB_TOKEN=...      # 이슈 수집용
@@ -45,7 +45,7 @@ python -m src.run analyze --extracted-json tests/fixtures/sample_extracted.json 
 - `dashboard/data/aisuit_<stamp>.csv` — 후보 CSV(`--write-candidate` 시)
 
 ### 2-A) 검토 방식 A — GitHub PR (권장)
-GitHub Actions(`.github/workflows/tba-analyzer.yml`)가 위 분석을 실행하고,
+GitHub Actions(`.github/workflows/analyzer-tba.yml`)가 위 분석을 실행하고,
 후보 CSV를 브랜치에 커밋해 **PR을 자동 생성**한다.
 - **merge** → 정본 CSV 반영(accept)
 - **close** → 미반영(reject)
@@ -73,7 +73,7 @@ python -m tests.test_pipeline    # matcher→changeset→apply (네트워크/LLM
 
 ## 구성
 ```
-tba-analyzer/
+analyzer-tba/
 ├── config.yaml          # 경로/임계값/모델 설정
 ├── src/
 │   ├── ingest.py        # GitHub Issue + 댓글 수집

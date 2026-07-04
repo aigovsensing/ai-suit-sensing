@@ -1,4 +1,4 @@
-# TBA-Analyzer 설정
+# Analyzer-TBA 설정
 
 # 정본 CSV 가 저장되는 디렉터리 (dashboard 가 읽는 위치)
 data_dir: "../dashboard/data"
