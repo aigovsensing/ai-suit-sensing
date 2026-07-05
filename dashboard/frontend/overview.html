@@ -32,6 +32,9 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .back-link { color: #fff; background: var(--blue); text-decoration: none; font-weight: 700;
              padding: 8px 16px; border-radius: 8px; transition: background .15s; }
 .back-link:hover { background: #2563eb; }
+.nav-btn { color: #374151; background: #f3f4f6; border: 1px solid var(--border); text-decoration: none;
+           font-weight: 700; padding: 8px 14px; border-radius: 8px; transition: background .15s; }
+.nav-btn:hover { background: #e5e9f0; }
 
 /* 티커 */
 .ticker { overflow: hidden; background: var(--card); border: 1px solid var(--border);
@@ -137,6 +140,8 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
     <div class="right">
       <span class="live">LIVE</span>
       <span id="today"></span>
+      <a class="nav-btn" href="/timeline/timeline-aisuit.html">⚖️ 소송 타임라인</a>
+      <a class="nav-btn" href="/timeline/timeline-reulation.html">📜 규제 타임라인</a>
       <a class="back-link" href="map.html">🗺️ 지도 대시보드 →</a>
     </div>
   </div>

@@ -753,9 +753,8 @@
             select.addEventListener('change', function() {
                 const file = select.value;
                 if (!file) return;
-                window.open('/timeline/' + file, '_blank');
-                // Reset so same item can be selected again
-                select.value = '';
+                // 새 탭 대신 같은 창에서 이동 — 하나의 앱 구성 유지 (타임라인 상단 내비게이션으로 복귀)
+                location.href = '/timeline/' + file;
             });
         });
     </script>
