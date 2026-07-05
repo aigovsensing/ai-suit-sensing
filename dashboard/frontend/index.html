@@ -36,43 +36,33 @@
                 <button id="header-dataset-search-btn" class="visualize-btn" data-i18n="btn_dataset_search">데이터셋 소송 조회</button>
             </div>
             <div class="control-group">
-                <label data-i18n="nav_stats_label">STATISTICS</label>
-                <button id="stats-menu-btn" class="visualize-btn" data-i18n="btn_stats">통계</button>
-            </div>
-            <div class="control-group">
-                <label data-i18n="nav_relation_label">RELATION</label>
-                <button id="lineage-btn" class="visualize-btn" onclick="window.open('lineage.html', '_blank')" data-i18n="btn_lineage">Lineage</button>
-            </div>
-            <div class="control-group">
                 <label data-i18n="nav_overview_label">현황판</label>
                 <button id="overview-btn" class="visualize-btn" onclick="location.href='/'" data-i18n="btn_overview">📊 메인 현황판</button>
             </div>
+            <!-- 실험실: 실험적/개선 진행 중 기능 모음 (암호 확인 후 사용) -->
             <div class="control-group">
-                <label data-i18n="nav_radar_label">레이더</label>
-                <button id="open-radar-btn" class="visualize-btn" data-i18n="btn_radar">🛰️ 리스크 레이더 (Alpha)</button>
+                <label data-i18n="nav_lab_label">실험실</label>
+                <select id="lab-select" class="visualize-btn" style="min-width: 150px; height: 35px; padding: 0 10px; appearance: auto;">
+                    <option value="" selected disabled data-i18n="lab_placeholder">🔒 실험실 기능...</option>
+                    <option value="stats">📊 통계</option>
+                    <option value="lineage">🕸️ 리니지 (Lineage)</option>
+                    <option value="radar">🛰️ 리스크 레이더</option>
+                    <option value="timeline">📅 소송 타임라인</option>
+                    <option value="report">📝 월간 보고서</option>
+                </select>
             </div>
             <div class="control-group">
                 <label data-i18n="nav_user_tools_label">환경설정</label>
                 <button id="open-search-tools-btn" class="visualize-btn" data-i18n="btn_user_tools">🛠️ 환경설정</button>
             </div>
 
-            <div class="control-group">
-                <label>타임라인</label>
-                <select id="timeline-select" class="visualize-btn" style="min-width: 110px; height: 35px; padding: 0 10px; appearance: auto;">
-                    <option value="" selected disabled>타임라인 선택</option>
-                    <option value="timeline-aisuit.html">AI소송</option>
-                    <option value="timeline-reulation.html">AI규제</option>
-                </select>
-            </div>
+            <!-- 실험실로 이동된 기능들의 기존 핸들러 유지용 숨김 버튼 (app.js 가 click 트리거) -->
+            <button id="stats-menu-btn" style="display:none" aria-hidden="true"></button>
+            <button id="open-radar-btn" style="display:none" aria-hidden="true"></button>
+            <button id="report-menu-btn" style="display:none" aria-hidden="true"></button>
 
             <!-- Spacer to push next items to the right -->
             <div class="header-spacer" style="flex-grow: 1;"></div>
-
-            <!-- Right Controls: Support & Settings -->
-            <div class="control-group">
-                <label data-i18n="nav_report_label">REPORT</label>
-                <button id="report-menu-btn" class="help-btn" data-i18n="btn_monthly_report">월간 보고서 생성</button>
-            </div>
             <div class="control-group">
                 <label data-i18n="nav_doc_label">MANUAL</label>
                 <select id="manual-select" class="help-btn" style="min-width: 140px; height: 35px; padding: 0 10px; appearance: auto;">
@@ -747,16 +737,5 @@
     <!-- Markdown Parser -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="js/app.js?v=1777540128"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const select = document.getElementById('timeline-select');
-            select.addEventListener('change', function() {
-                const file = select.value;
-                if (!file) return;
-                // 새 탭 대신 같은 창에서 이동 — 하나의 앱 구성 유지 (타임라인 상단 내비게이션으로 복귀)
-                location.href = '/timeline/' + file;
-            });
-        });
-    </script>
 </body>
 </html>

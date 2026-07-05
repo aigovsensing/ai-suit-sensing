@@ -63,6 +63,8 @@ const TRANSLATIONS = {
         btn_lineage: "🕸️ Lineage (리니지)",
         nav_overview_label: "현황판",
         btn_overview: "📊 메인 현황판",
+        nav_lab_label: "실험실",
+        lab_placeholder: "🔒 실험실 기능...",
         nav_api_label: "API",
         btn_api_manual: "API 매뉴얼",
         nav_guide_label: "가이드",
@@ -200,6 +202,8 @@ const TRANSLATIONS = {
         btn_lineage: "🕸️ Lineage",
         nav_overview_label: "OVERVIEW",
         btn_overview: "📊 Status Board",
+        nav_lab_label: "LAB",
+        lab_placeholder: "🔒 Lab Features...",
         nav_api_label: "API",
         btn_api_manual: "API Manual",
         nav_guide_label: "GUIDE",
@@ -611,6 +615,33 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    // ─── 실험실(Lab): 실험적 기능 모음 — 암호 확인 후 사용 ───
+    // 통계/리니지/리스크 레이더/타임라인/월간 보고서는 개선 진행 중인 기능이라
+    // 실험실 메뉴 하나로 통합. 암호는 세션당 1회만 확인(sessionStorage).
+    const labSelect = document.getElementById('lab-select');
+    if (labSelect) {
+        labSelect.addEventListener('change', () => {
+            const val = labSelect.value;
+            labSelect.value = ''; // 같은 항목을 다시 선택할 수 있도록 리셋
+            if (!val) return;
+            if (sessionStorage.getItem('lab-unlocked') !== '1') {
+                const pw = prompt("실험실 메뉴는 접근이 제한되어 있습니다. 암호를 입력해주세요.");
+                if (pw !== "2848") {
+                    if (pw !== null) alert("암호가 일치하지 않습니다.");
+                    return;
+                }
+                sessionStorage.setItem('lab-unlocked', '1');
+            }
+            switch (val) {
+                case 'stats':    document.getElementById('stats-menu-btn')?.click(); break;
+                case 'lineage':  window.open('lineage.html', '_blank'); break;
+                case 'radar':    document.getElementById('open-radar-btn')?.click(); break;
+                case 'timeline': location.href = '/timeline/timeline-aisuit.html'; break;
+                case 'report':   document.getElementById('report-menu-btn')?.click(); break;
+            }
+        });
+    }
+
     const reportMenuBtn = document.getElementById('report-menu-btn');
     const reportModal = document.getElementById('report-modal');
     const generateReportBtn = document.getElementById('generate-report-btn');
@@ -643,12 +674,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     if (reportMenuBtn && reportModal) {
+        // 암호 확인은 실험실(lab-select) 진입 시 1회 수행하므로 여기서는 생략
         reportMenuBtn.onclick = () => {
-            const pw = prompt("이 메뉴는 접근이 제한되어 있습니다. 암호를 입력해주세요.");
-            if (pw !== "2848") {
-                if (pw !== null) alert("암호가 일치하지 않습니다.");
-                return;
-            }
             populateMonthPicker();
             reportModal.style.display = 'flex';
             const res = document.getElementById('report-result-container');
