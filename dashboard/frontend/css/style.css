@@ -571,6 +571,19 @@ select option {
     filter: brightness(1.1);
 }
 
+/* 실험실 셀렉트: appearance:auto 인 select 는 브라우저가 네이티브 흰 배경으로
+   그리는데 .visualize-btn 의 color:white 가 얹혀 '흰 배경+흰 글자'가 됐음.
+   테마와 무관하게 항상 읽히도록 배경/글자색을 명시 지정. */
+#lab-select {
+    background: #ffffff !important;
+    color: #1f2937 !important;
+    border: 1px solid rgba(0, 0, 0, 0.25) !important;
+}
+#lab-select option {
+    background: #ffffff;
+    color: #1f2937;
+}
+
 .controls {
     display: flex;
     gap: 8px;
