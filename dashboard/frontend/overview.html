@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 소송 센싱 — 메인 현황판</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<style>
+/* ─────────── 메인 현황판 (라이트 테마, 의존성 없음) ─────────── */
+:root {
+  --bg: #f5f7fa; --card: #ffffff; --border: #e5e9f0;
+  --text: #1f2937; --dim: #6b7280; --muted: #9ca3af;
+  --blue: #3b82f6; --red: #ef4444; --green: #16a34a; --amber: #d97706; --purple: #7c3aed;
+  --radius: 16px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text);
+       font-family: 'Nanum Gothic','Outfit',system-ui,sans-serif; font-size: 14px; }
+.wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 40px; }
+
+/* 헤더 */
+.top { display: flex; align-items: center; gap: 12px; padding: 8px 4px 18px; }
+.top .logo { font-size: 26px; }
+.top h1 { margin: 0; font-size: 20px; font-weight: 800; }
+.top .sub { margin: 2px 0 0; font-size: 12px; color: var(--dim); }
+.top .right { margin-left: auto; display: flex; align-items: center; gap: 14px; font-size: 13px; color: var(--dim); }
+.live { color: var(--green); font-weight: 800; letter-spacing: 1px; }
+.live::before { content: "●"; margin-right: 5px; animation: blink 1.6s infinite; }
+@keyframes blink { 50% { opacity: 0.25; } }
+.back-link { color: var(--blue); text-decoration: none; font-weight: 700; }
+
+/* 티커 */
+.ticker { overflow: hidden; background: var(--card); border: 1px solid var(--border);
+          border-radius: 10px; margin-bottom: 20px; white-space: nowrap; }
+.ticker-track { display: inline-block; padding: 9px 0; animation: scroll 60s linear infinite; }
+.ticker:hover .ticker-track { animation-play-state: paused; }
+@keyframes scroll { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.tick-item { display: inline-block; margin: 0 28px; font-size: 13px; color: var(--text); }
+.tick-item .flag { color: var(--muted); font-size: 11px; margin-right: 6px; text-transform: uppercase; }
+.tick-item .st { font-weight: 700; }
+
+/* KPI 카드 */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 14px; margin-bottom: 22px; }
+.kpi { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+.kpi .k-label { font-size: 12px; color: var(--dim); margin-bottom: 8px; }
+.kpi .k-value { font-size: 32px; font-weight: 800; line-height: 1; font-family: 'Outfit',sans-serif; }
+.kpi .k-foot { font-size: 11px; color: var(--muted); margin-top: 8px; }
+.kpi .k-foot.up { color: var(--green); font-weight: 700; }
+
+/* 카드 공통 */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 22px; }
+.card h2 { margin: 0 0 16px; font-size: 15px; font-weight: 800; }
+.grid2 { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 20px; }
+@media (max-width: 860px) { .grid2 { grid-template-columns: 1fr; } }
+
+/* 연도별 세로 막대 */
+.ybars { display: flex; align-items: flex-end; gap: 10%; height: 200px; padding: 0 4%; }
+.ybar { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; }
+.ybar .bar { width: 100%; max-width: 90px; background: #93b4f8; border-radius: 6px 6px 0 0; transition: height .5s ease; }
+.ybar .cnt { font-size: 12px; font-weight: 700; color: var(--dim); margin-bottom: 4px; }
+.ybar .yr { font-size: 12px; color: var(--dim); margin-top: 8px; }
+
+/* 피고별 가로 막대 */
+.hrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.hrow .name { width: 92px; font-size: 12px; color: var(--dim); text-align: right;
+              overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hrow .track { flex: 1; background: #f1f4f9; border-radius: 6px; height: 18px; }
+.hrow .fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
+.hrow .val { width: 26px; font-size: 12px; font-weight: 700; color: var(--dim); }
+
+/* 국가 카드 */
+.geo { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
+.geo .g { border: 1px solid var(--border); border-radius: 12px; text-align: center; padding: 16px 8px; }
+.geo .g .code { font-size: 15px; font-weight: 800; color: var(--dim); letter-spacing: 2px; }
+.geo .g .n { font-size: 26px; font-weight: 800; color: #1d4ed8; font-family: 'Outfit',sans-serif; margin: 6px 0 2px; }
+.geo .g .nm { font-size: 12px; color: var(--muted); }
+
+/* 도넛 (conic-gradient) */
+.donut-wrap { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
+.donut { width: 190px; height: 190px; border-radius: 50%; position: relative; flex-shrink: 0; }
+.donut::after { content: attr(data-total); position: absolute; inset: 48px; background: var(--card);
+                border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                font-size: 22px; font-weight: 800; font-family: 'Outfit',sans-serif; }
+.legend { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+.legend .li { display: flex; align-items: center; gap: 8px; }
+.legend .sw { width: 22px; height: 12px; border-radius: 3px; }
+.legend .pct { color: var(--muted); margin-left: 4px; }
+
+/* 소송 목록 테이블 */
+.toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+.toolbar input, .toolbar select { border: 1px solid var(--border); border-radius: 8px;
+        padding: 8px 12px; font-size: 13px; background: #fbfcfe; color: var(--text); }
+.toolbar input { min-width: 220px; }
+.toolbar .count { margin-left: auto; font-size: 12px; color: var(--muted); }
+table.cases { width: 100%; border-collapse: collapse; font-size: 13px; }
+table.cases th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
+                 padding: 8px 10px; border-bottom: 1px solid var(--border); }
+table.cases td { padding: 11px 10px; border-bottom: 1px solid #f1f4f9; vertical-align: top; }
+td.case-name { color: #334e8d; font-weight: 700; max-width: 340px; }
+td.case-name .pl { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.b-active { background: #e3edff; color: #1d4ed8; }
+.b-prep   { background: #f4f0ff; color: var(--purple); }
+.b-closed { background: #eef0f3; color: #4b5563; }
+.b-judged { background: #e6f7ec; color: var(--green); }
+.b-appeal { background: #fff4e0; color: var(--amber); }
+.more-row td { text-align: center; }
+.more-row button { border: 1px solid var(--border); background: #fbfcfe; border-radius: 8px;
+                   padding: 8px 22px; cursor: pointer; font-size: 13px; color: var(--dim); }
+
+/* 인사이트 */
+.insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 20px; }
+.insight { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
+.insight .ico { font-size: 22px; }
+.insight h3 { margin: 10px 0 8px; font-size: 14px; font-weight: 800; }
+.insight p { margin: 0; font-size: 13px; color: var(--dim); line-height: 1.7; }
+
+.section-title { font-size: 15px; font-weight: 800; margin: 26px 4px 12px; }
+footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 34px;
+         border-top: 1px solid var(--border); padding-top: 18px; }
+#loading { text-align: center; padding: 80px 0; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="top">
+    <span class="logo">⚖️</span>
+    <div>
+      <h1>AI 소송 센싱</h1>
+      <p class="sub">AI Training Data Litigation Intelligence</p>
+    </div>
+    <div class="right">
+      <span class="live">LIVE</span>
+      <span id="today"></span>
+      <a class="back-link" href="/">지도 대시보드 →</a>
+    </div>
+  </div>
+
+  <div id="loading">데이터 로딩 중…</div>
+  <div id="board" style="display:none;">
+
+    <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="grid2">
+      <div class="card"><h2>📈 연도별 소송 증가 추이</h2><div class="ybars" id="yearChart"></div></div>
+      <div class="card"><h2>🎯 피고 기업별 소송 건수 (Top 7)</h2><div id="defChart"></div></div>
+    </div>
+
+    <div class="grid2">
+      <div class="card"><h2>🌏 국가별 소송 현황</h2><div class="geo" id="geoCards"></div></div>
+      <div class="card"><h2>📁 대상 데이터 유형별 분포</h2>
+        <div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend" id="donutLegend"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>📋 전체 소송 목록</h2>
+      <div class="toolbar">
+        <input id="q" type="search" placeholder="🔍 소송명 / 피고 검색...">
+        <select id="fCountry"><option value="">전체 국가</option></select>
+        <select id="fStatus"><option value="">전체 상태</option></select>
+        <span class="count" id="tblCount"></span>
+      </div>
+      <table class="cases">
+        <thead><tr><th>ID</th><th>소송명</th><th>피고</th><th>국가</th><th>상태</th><th>소송제기일</th><th>최근 업데이트</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="section-title">💡 핵심 인사이트 (데이터 자동 산출)</div>
+    <div class="insights" id="insights"></div>
+
+    <footer id="foot"></footer>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ───────────────────────────────────────────────────────────
+   메인 현황판: 최신 CSV(/api/files → /api/cases)를 불러와
+   전 지표를 클라이언트에서 실시간 집계한다. 외부 라이브러리 없음.
+   ─────────────────────────────────────────────────────────── */
+
+const COUNTRY_CODE = { "미국":"US","한국":"KR","영국":"GB","독일":"DE","캐나다":"CA",
+                       "인도":"IN","일본":"JP","중국":"CN","프랑스":"FR","호주":"AU","EU":"EU" };
+const STATUS_KIND = s => {
+  if (!s) return "active";
+  if (s.includes("종결")) return "closed";
+  if (s.includes("판결")) return "judged";
+  if (s.includes("준비")) return "prep";
+  if (s.includes("항소") || s.includes("2심")) return "appeal";
+  return "active"; // 소 제기됨 / 1심 진행중 등
+};
+const BADGE = { active:["b-active","진행 중"], prep:["b-prep","준비 중"], closed:["b-closed","종결"],
+                judged:["b-judged","판결"], appeal:["b-appeal","항소/2심"] };
+
+/* 대상 데이터(자유 텍스트) → 유형 분류 (키워드 기반) */
+const TYPE_RULES = [
+  ["도서·출판", /도서|책|book|novel|소설|작가|교과서|출판|텍스트|저서|글/i],
+  ["이미지·아트", /이미지|image|사진|photo|그림|art|아트|일러스트|비주얼/i],
+  ["음악·음성", /음악|music|음원|노래|song|가사|lyric|음성|voice|보컬/i],
+  ["뉴스미디어", /뉴스|news|기사|신문|저널|언론|미디어/i],
+  ["영상", /영상|video|비디오|youtube|유튜브|영화|film|방송/i],
+  ["코드·SW", /코드|code|소프트웨어|software|github/i],
+];
+const DONUT_COLORS = ["#7ea6f6","#f28b82","#7bd3a0","#f5c04e","#b49af5","#f097c3","#c3cbd8"];
+
+const fmtDate = d => d instanceof Date && !isNaN(d) ? d.toISOString().slice(0,10) : "";
+const parseD = s => { const d = new Date(String(s||"").trim()); return isNaN(d) ? null : d; };
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+let ALL = [], FILE = "";
+let tableLimit = 30;
+
+async function boot() {
+  document.getElementById("today").textContent =
+    new Date().toLocaleDateString("ko-KR", { year:"numeric", month:"long", day:"numeric" });
+  try {
+    const files = await (await fetch("/api/files")).json();
+    if (!files.length) throw new Error("데이터 파일이 없습니다.");
+    FILE = files[0]; // 최신 파일 (이름 역순 정렬 = 최신순)
+    const res = await (await fetch(`/api/cases?file_name=${encodeURIComponent(FILE)}`)).json();
+    ALL = (res.data || []).map(r => ({ ...r, _d: parseD(r.file_date), _kind: STATUS_KIND(r.status) }));
+    render();
+    document.getElementById("loading").style.display = "none";
+    document.getElementById("board").style.display = "block";
+  } catch (e) {
+    document.getElementById("loading").textContent = "⚠️ 데이터 로딩 실패: " + e.message +
+      " — 서버(/api/files) 상태를 확인해 주세요.";
+  }
+}
+
+function render() {
+  renderTicker(); renderKpis(); renderYearChart(); renderDefChart();
+  renderGeo(); renderDonut(); initTable(); renderInsights();
+  document.getElementById("foot").textContent =
+    `AI 소송 센싱 대시보드  |  데이터셋: ${FILE}  |  총 ${ALL.length}건`;
+}
+
+/* 티커: 최근 제기 순 10건 */
+function renderTicker() {
+  const recent = [...ALL].filter(r => r._d).sort((a,b) => b._d - a._d).slice(0, 10);
+  const html = recent.map(r =>
+    `<span class="tick-item"><span class="flag">${COUNTRY_CODE[r.country] || r.country}</span>` +
+    `${esc(r.case_name)} — ${fmtDate(r._d)} <span class="st">${esc(r.status)}</span></span>`).join("");
+  document.getElementById("ticker").innerHTML = html + html; // 이어붙여 무한 스크롤
+}
+
+/* KPI 5종 */
+function renderKpis() {
+  const total = ALL.length;
+  const active = ALL.filter(r => ["active","appeal"].includes(r._kind)).length;
+  const done = ALL.filter(r => ["closed","judged"].includes(r._kind)).length;
+  const countries = new Set(ALL.map(r => r.country).filter(Boolean)).size;
+  const latest = ALL.reduce((m,r) => r._d && r._d > m ? r._d : m, new Date(0));
+  const cut30 = new Date(latest); cut30.setDate(cut30.getDate() - 30);
+  const new30 = ALL.filter(r => r._d && r._d >= cut30).length;
+  const yThis = latest.getFullYear(), byYear = countByYear();
+  const growth = byYear[yThis-1] ? Math.round(((byYear[yThis]||0) / byYear[yThis-1] - 1) * 100) : null;
+
+  const cards = [
+    ["총 소송 건수", total, growth !== null ? `${growth>=0?"▲":"▼"} ${yThis-1} 대비 ${growth>=0?"+":""}${growth}%` : "글로벌 누적", "#4b5563", growth !== null && growth >= 0],
+    ["진행 중", active, "법정 계류", "#b91c1c", false],
+    ["종결 / 판결", done, "종료 사건", "#a16207", false],
+    ["진출 국가", countries, "소송 발생 국가 수", "#15803d", false],
+    ["최근 30일 신규", new30, `${fmtDate(cut30)} 이후 제기`, "#6d28d9", false],
+  ];
+  document.getElementById("kpis").innerHTML = cards.map(([l,v,f,c,up]) =>
+    `<div class="kpi"><div class="k-label">${l}</div><div class="k-value" style="color:${c}">${v}</div>` +
+    `<div class="k-foot ${up?"up":""}">${f}</div></div>`).join("");
+}
+
+function countByYear() {
+  const m = {};
+  ALL.forEach(r => { if (r._d) { const y = r._d.getFullYear(); m[y] = (m[y]||0)+1; } });
+  return m;
+}
+
+/* 연도별 세로 막대 */
+function renderYearChart() {
+  const m = countByYear();
+  const years = Object.keys(m).map(Number).sort().slice(-6);
+  const max = Math.max(...years.map(y => m[y]), 1);
+  document.getElementById("yearChart").innerHTML = years.map(y =>
+    `<div class="ybar"><div class="cnt">${m[y]}</div>` +
+    `<div class="bar" style="height:${Math.max(4, m[y]/max*160)}px"></div><div class="yr">${y}</div></div>`).join("");
+}
+
+/* 피고 기업별 Top7 — 복수 피고(콤마 구분) 개별 집계 */
+function renderDefChart() {
+  const m = {};
+  ALL.forEach(r => String(r.defendant||"").split(/[,;·]/).forEach(d => {
+    d = d.trim().replace(/\s*(외|등)$/,"").trim();
+    if (d && d.toLowerCase() !== "unknown") m[d] = (m[d]||0)+1;
+  }));
+  const top = Object.entries(m).sort((a,b) => b[1]-a[1]).slice(0,7);
+  const max = Math.max(...top.map(t => t[1]), 1);
+  const colors = ["#f28b82","#f5a962","#f5c04e","#7bd3a0","#7ea6f6","#b49af5","#f097c3"];
+  document.getElementById("defChart").innerHTML = top.map(([name,n],i) =>
+    `<div class="hrow"><div class="name" title="${esc(name)}">${esc(name)}</div>` +
+    `<div class="track"><div class="fill" style="width:${n/max*100}%;background:${colors[i%colors.length]}"></div></div>` +
+    `<div class="val">${n}</div></div>`).join("");
+}
+
+/* 국가 카드 */
+function renderGeo() {
+  const m = {};
+  ALL.forEach(r => { const c = (r.country||"").trim(); if (c) m[c] = (m[c]||0)+1; });
+  const list = Object.entries(m).sort((a,b) => b[1]-a[1]);
+  document.getElementById("geoCards").innerHTML = list.map(([name,n]) =>
+    `<div class="g"><div class="code">${COUNTRY_CODE[name] || "—"}</div><div class="n">${n}</div>` +
+    `<div class="nm">${esc(name)}</div></div>`).join("");
+}
+
+/* 대상 데이터 유형 도넛 */
+function classifyTarget(r) {
+  const t = `${r.target_data||""} ${r.reason||""}`;
+  for (const [label, re] of TYPE_RULES) if (re.test(t)) return label;
+  return "기타";
+}
+function renderDonut() {
+  const m = {};
+  ALL.forEach(r => { const k = classifyTarget(r); m[k] = (m[k]||0)+1; });
+  const list = Object.entries(m).sort((a,b) => b[1]-a[1]);
+  const total = ALL.length || 1;
+  let acc = 0; const segs = [];
+  list.forEach(([label,n], i) => {
+    const from = acc/total*360, to = (acc+n)/total*360;
+    segs.push(`${DONUT_COLORS[i%DONUT_COLORS.length]} ${from}deg ${to}deg`);
+    acc += n;
+  });
+  const donut = document.getElementById("donut");
+  donut.style.background = `conic-gradient(${segs.join(",")})`;
+  donut.dataset.total = total + "건";
+  document.getElementById("donutLegend").innerHTML = list.map(([label,n],i) =>
+    `<div class="li"><span class="sw" style="background:${DONUT_COLORS[i%DONUT_COLORS.length]}"></span>` +
+    `${esc(label)} <b>${n}</b><span class="pct">(${Math.round(n/total*100)}%)</span></div>`).join("");
+}
+
+/* 전체 소송 목록 (검색/필터 + 더보기) */
+function initTable() {
+  const cSel = document.getElementById("fCountry"), sSel = document.getElementById("fStatus");
+  [...new Set(ALL.map(r => r.country).filter(Boolean))].sort()
+    .forEach(c => cSel.insertAdjacentHTML("beforeend", `<option>${esc(c)}</option>`));
+  [...new Set(ALL.map(r => r.status).filter(Boolean))].sort()
+    .forEach(s => sSel.insertAdjacentHTML("beforeend", `<option>${esc(s)}</option>`));
+  ["q","fCountry","fStatus"].forEach(id =>
+    document.getElementById(id).addEventListener("input", () => { tableLimit = 30; renderTable(); }));
+  renderTable();
+}
+function renderTable() {
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const fc = document.getElementById("fCountry").value, fs = document.getElementById("fStatus").value;
+  const rows = [...ALL]
+    .filter(r => (!fc || r.country === fc) && (!fs || r.status === fs) &&
+      (!q || `${r.case_name} ${r.defendant} ${r.plaintiff}`.toLowerCase().includes(q)))
+    .sort((a,b) => (b._d||0) - (a._d||0));
+  const shown = rows.slice(0, tableLimit);
+  const body = shown.map(r => {
+    const [cls, txt] = BADGE[r._kind];
+    const upd = (r.last_update || "").trim() || (r.result || "").trim() || "—";
+    return `<tr>
+      <td>${esc(r.system_id || "—")}</td>
+      <td class="case-name">${r.url ? `<a href="${esc(r.url)}" target="_blank" style="color:inherit">${esc(r.case_name)}</a>` : esc(r.case_name)}
+          <span class="pl">${esc(r.plaintiff)}</span></td>
+      <td>${esc(r.defendant)}</td>
+      <td>${COUNTRY_CODE[r.country] || ""} ${esc(r.country)}</td>
+      <td><span class="badge ${cls}">${txt}</span><div style="font-size:11px;color:var(--muted);margin-top:3px">${esc(r.status)}</div></td>
+      <td>${fmtDate(r._d) || esc(r.file_date)}</td>
+      <td style="max-width:200px">${esc(upd).slice(0,80)}</td>
+    </tr>`;
+  }).join("");
+  const more = rows.length > tableLimit
+    ? `<tr class="more-row"><td colspan="7"><button onclick="tableLimit+=50;renderTable()">더 보기 (${rows.length - tableLimit}건 남음)</button></td></tr>` : "";
+  document.getElementById("tbody").innerHTML = body + more;
+  document.getElementById("tblCount").textContent = `${shown.length} / ${rows.length}건 표시`;
+}
+
+/* 핵심 인사이트: 데이터에서 자동 산출 */
+function renderInsights() {
+  const byYear = countByYear();
+  const years = Object.keys(byYear).map(Number).sort();
+  const yLast = years[years.length-1], yPrev = years[years.length-2];
+  const defTop = Object.entries(ALL.reduce((m,r) => {
+    String(r.defendant||"").split(/[,;·]/).forEach(d => { d=d.trim(); if(d && d.toLowerCase()!=="unknown") m[d]=(m[d]||0)+1; });
+    return m; }, {})).sort((a,b)=>b[1]-a[1])[0] || ["—",0];
+  const typeTop = Object.entries(ALL.reduce((m,r)=>{const k=classifyTarget(r);m[k]=(m[k]||0)+1;return m;},{}))
+    .sort((a,b)=>b[1]-a[1])[0] || ["—",0];
+  const latest = [...ALL].filter(r=>r._d).sort((a,b)=>b._d-a._d)[0];
+  const usShare = Math.round(ALL.filter(r=>r.country==="미국").length / (ALL.length||1) * 100);
+
+  const items = [
+    ["⚖️","소송 추이", `${yPrev}년 ${byYear[yPrev]||0}건 → ${yLast}년 ${byYear[yLast]||0}건 제기. AI 학습데이터 관련 법적 분쟁이 지속되고 있으며, 전체 누적 ${ALL.length}건에 도달했습니다.`],
+    ["🎯","최다 피소 기업", `${defTop[0]} (${defTop[1]}건)이 가장 많은 소송에 피소되었습니다. 생성형 AI 선두 기업에 소송이 집중되는 양상입니다.`],
+    ["📁","주요 분쟁 데이터", `대상 데이터 유형 중 '${typeTop[0]}'(${typeTop[1]}건)이 최다입니다. 미국 소송 비중은 ${usShare}%로 미국 법원 판례가 글로벌 기준점 역할을 하고 있습니다.`],
+    ["🕐","최신 동향", latest ? `가장 최근 소송은 ${fmtDate(latest._d)} 제기된 「${latest.case_name}」(피고: ${latest.defendant}) 입니다. 상단 티커에서 최근 10건을 확인하세요.` : "최근 데이터 없음"],
+  ];
+  document.getElementById("insights").innerHTML = items.map(([ico,t,p]) =>
+    `<div class="insight"><div class="ico">${ico}</div><h3>${t}</h3><p>${esc(p)}</p></div>`).join("");
+}
+
+boot();
+</script>
+</body>
+</html>

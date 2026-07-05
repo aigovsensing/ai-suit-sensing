@@ -473,3 +473,7 @@ def read_root():
 @app.get("/lineage.html")
 def read_lineage():
     return FileResponse(os.path.join(_frontend_dir, "lineage.html"))
+
+@app.get("/overview.html")
+def read_overview():
+    return FileResponse(os.path.join(_frontend_dir, "overview.html"))
