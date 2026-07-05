@@ -83,7 +83,7 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 ```
 
-→ 브라우저에서 **http://localhost:8007** 접속 → 상단 `DATASET`에서 데이터 선택 → 히트맵/리니지/통계 탐색.
+→ 브라우저에서 **http://localhost:8007** 접속 → 첫 화면 **메인 현황판**(전체 현황)을 본 뒤 → **지도 대시보드**(`/map.html`)에서 히트맵/리니지/통계 세부 탐색.
 자세한 내용은 [dashboard/README.md](./dashboard/README.md).
 
 ### 2. `tracker` — 소송 센싱 실행

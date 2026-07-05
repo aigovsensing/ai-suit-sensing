@@ -45,7 +45,7 @@
             </div>
             <div class="control-group">
                 <label data-i18n="nav_overview_label">현황판</label>
-                <button id="overview-btn" class="visualize-btn" onclick="openOverviewModal()" data-i18n="btn_overview">📊 메인 현황판</button>
+                <button id="overview-btn" class="visualize-btn" onclick="location.href='/'" data-i18n="btn_overview">📊 메인 현황판</button>
             </div>
             <div class="control-group">
                 <label data-i18n="nav_radar_label">레이더</label>
@@ -704,14 +704,6 @@
     </div>
 
     <!-- Report Modal -->
-    <!-- 메인 현황판: 새 탭 대신 본문 위 전체화면 모달로 임베드 (일체감 유지) -->
-    <div id="overview-modal" class="modal-overlay">
-        <div class="modal overview-modal-content">
-            <button class="modal-close-top" onclick="closeOverviewModal()" aria-label="닫기">&times;</button>
-            <iframe id="overview-frame" title="AI 소송 메인 현황판"></iframe>
-        </div>
-    </div>
-
     <div id="report-modal" class="modal-overlay">
         <div class="modal inner-modal report-modal-content">
             <button class="modal-close-top" onclick="document.getElementById('report-modal').style.display='none'">&times;</button>

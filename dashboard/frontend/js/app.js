@@ -611,26 +611,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // 메인 현황판 모달 (iframe 임베드) — 새 탭 대신 앱 내부에서 표시
-    window.openOverviewModal = function () {
-        const modal = document.getElementById('overview-modal');
-        const frame = document.getElementById('overview-frame');
-        if (frame && !frame.getAttribute('src')) frame.src = 'overview.html'; // 첫 오픈 시에만 로드
-        if (modal) modal.style.display = 'flex';
-    };
-    window.closeOverviewModal = function () {
-        const modal = document.getElementById('overview-modal');
-        if (modal) modal.style.display = 'none';
-    };
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') window.closeOverviewModal();
-    });
-    // 홈 접속 시 메인 현황판을 첫 화면으로 표시 — 전체 현황을 먼저 보고,
-    // 닫으면(X/ESC) 지도 대시보드로 이어지는 순차 흐름. ?nooverview=1 로 건너뛰기 가능.
-    if (!new URLSearchParams(location.search).has('nooverview')) {
-        window.openOverviewModal();
-    }
-
     const reportMenuBtn = document.getElementById('report-menu-btn');
     const reportModal = document.getElementById('report-modal');
     const generateReportBtn = document.getElementById('generate-report-btn');
@@ -1229,12 +1209,7 @@ async function initApp() {
         const hideGuide = localStorage.getItem('hide-user-guide');
         if (!hideGuide) {
             // Small delay to ensure everything is ready
-            setTimeout(() => {
-                // 메인 현황판(첫 화면)이 떠 있으면 겹치지 않도록 자동 표시 생략
-                const ov = document.getElementById('overview-modal');
-                if (ov && ov.style.display === 'flex') return;
-                openDocModal('user');
-            }, 1000);
+            setTimeout(() => openDocModal('user'), 1000);
         }
     }
     initUserGuideAutoShow();

@@ -468,6 +468,11 @@ app.mount("/manual", StaticFiles(directory=os.path.join(_frontend_dir, "manual")
 
 @app.get("/")
 def read_root():
+    # 첫 화면 = 메인 현황판(전체 현황) → 세부 분석은 지도 대시보드(/map.html)로 이동
+    return FileResponse(os.path.join(_frontend_dir, "overview.html"))
+
+@app.get("/map.html")
+def read_map():
     return FileResponse(os.path.join(_frontend_dir, "index.html"))
 
 @app.get("/lineage.html")

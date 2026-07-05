@@ -3353,28 +3353,6 @@ main {
     color: #fde68a !important;
 }
 
-/* ─── 메인 현황판 모달: 거의 전체화면 + iframe 임베드 ─── */
-.overview-modal-content {
-    width: 96% !important;
-    max-width: 1440px !important;
-    height: 92vh;
-    padding: 0 !important;
-    overflow: hidden !important;
-    display: flex;
-}
-.overview-modal-content iframe {
-    border: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 24px;
-    background: #f5f7fa; /* overview 라이트 테마 배경과 일치 */
-}
-.overview-modal-content .modal-close-top {
-    z-index: 2;
-    background: rgba(31, 41, 55, 0.55);
-    color: #fff;
-}
-
 /* 결과 상단 .docx 저장 툴바 — 스크롤해도 상단에 고정 */
 .report-modal-content .report-toolbar {
     position: sticky;
