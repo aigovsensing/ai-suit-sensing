@@ -611,6 +611,21 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    // 메인 현황판 모달 (iframe 임베드) — 새 탭 대신 앱 내부에서 표시
+    window.openOverviewModal = function () {
+        const modal = document.getElementById('overview-modal');
+        const frame = document.getElementById('overview-frame');
+        if (frame && !frame.getAttribute('src')) frame.src = 'overview.html'; // 첫 오픈 시에만 로드
+        if (modal) modal.style.display = 'flex';
+    };
+    window.closeOverviewModal = function () {
+        const modal = document.getElementById('overview-modal');
+        if (modal) modal.style.display = 'none';
+    };
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') window.closeOverviewModal();
+    });
+
     const reportMenuBtn = document.getElementById('report-menu-btn');
     const reportModal = document.getElementById('report-modal');
     const generateReportBtn = document.getElementById('generate-report-btn');

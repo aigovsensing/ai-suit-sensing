@@ -220,6 +220,11 @@ let tableLimit = 30;
 async function boot() {
   document.getElementById("today").textContent =
     new Date().toLocaleDateString("ko-KR", { year:"numeric", month:"long", day:"numeric" });
+  // 대시보드 모달(iframe) 안에서 열린 경우: 복귀 링크는 불필요(모달 X로 닫음) → 숨김
+  if (window.self !== window.top) {
+    const back = document.querySelector(".back-link");
+    if (back) back.style.display = "none";
+  }
   try {
     const files = await (await fetch("/api/files")).json();
     if (!files.length) throw new Error("데이터 파일이 없습니다.");
