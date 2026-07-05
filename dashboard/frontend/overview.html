@@ -14,7 +14,24 @@
   --text: #1f2937; --dim: #6b7280; --muted: #9ca3af;
   --blue: #3b82f6; --red: #ef4444; --green: #16a34a; --amber: #d97706; --purple: #7c3aed;
   --radius: 16px;
+  /* 컴포넌트별 색 (다크 모드에서 오버라이드) */
+  --track: #f1f4f9; --input-bg: #fbfcfe; --row-line: #f1f4f9;
+  --case-link: #334e8d; --geo-num: #1d4ed8;
+  --k-total: #4b5563; --k-active: #b91c1c; --k-done: #a16207; --k-geo: #15803d; --k-new: #6d28d9;
 }
+/* ── 나이트 모드 팔레트 ── */
+body.dark {
+  --bg: #0f1522; --card: #161d2c; --border: #263043;
+  --text: #e5eaf3; --dim: #9aa6b8; --muted: #6d7789;
+  --track: #232c3d; --input-bg: #1b2334; --row-line: #20293a;
+  --case-link: #9db8ff; --geo-num: #8fb3ff;
+  --k-total: #cbd5e1; --k-active: #f87171; --k-done: #fbbf24; --k-geo: #4ade80; --k-new: #c4b5fd;
+}
+body.dark .badge.b-active { background: rgba(59,130,246,.18); color: #93b4f8; }
+body.dark .badge.b-prep   { background: rgba(124,58,237,.20); color: #c4b5fd; }
+body.dark .badge.b-closed { background: rgba(148,163,184,.18); color: #cbd5e1; }
+body.dark .badge.b-judged { background: rgba(22,163,74,.20);  color: #4ade80; }
+body.dark .badge.b-appeal { background: rgba(217,119,6,.20);  color: #fbbf24; }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--bg); color: var(--text);
        font-family: 'Nanum Gothic','Outfit',system-ui,sans-serif; font-size: 14px; }
@@ -32,6 +49,9 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .back-link { color: #fff; background: var(--blue); text-decoration: none; font-weight: 700;
              padding: 8px 16px; border-radius: 8px; transition: background .15s; }
 .back-link:hover { background: #2563eb; }
+.theme-toggle { border: 1px solid var(--border); background: var(--card); color: var(--text);
+                border-radius: 8px; padding: 7px 11px; cursor: pointer; font-size: 15px; line-height: 1; }
+.theme-toggle:hover { border-color: var(--blue); }
 
 /* 티커 */
 .ticker { overflow: hidden; background: var(--card); border: 1px solid var(--border);
@@ -68,7 +88,7 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .hrow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .hrow .name { width: 92px; font-size: 12px; color: var(--dim); text-align: right;
               overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.hrow .track { flex: 1; background: #f1f4f9; border-radius: 6px; height: 18px; }
+.hrow .track { flex: 1; background: var(--track); border-radius: 6px; height: 18px; }
 .hrow .fill { height: 100%; border-radius: 6px; transition: width .5s ease; }
 .hrow .val { width: 26px; font-size: 12px; font-weight: 700; color: var(--dim); }
 
@@ -76,7 +96,7 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .geo { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 12px; }
 .geo .g { border: 1px solid var(--border); border-radius: 12px; text-align: center; padding: 16px 8px; }
 .geo .g .code { font-size: 15px; font-weight: 800; color: var(--dim); letter-spacing: 2px; }
-.geo .g .n { font-size: 26px; font-weight: 800; color: #1d4ed8; font-family: 'Outfit',sans-serif; margin: 6px 0 2px; }
+.geo .g .n { font-size: 26px; font-weight: 800; color: var(--geo-num); font-family: 'Outfit',sans-serif; margin: 6px 0 2px; }
 .geo .g .nm { font-size: 12px; color: var(--muted); }
 
 /* 도넛 (conic-gradient) */
@@ -93,14 +113,14 @@ body { margin: 0; background: var(--bg); color: var(--text);
 /* 소송 목록 테이블 */
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .toolbar input, .toolbar select { border: 1px solid var(--border); border-radius: 8px;
-        padding: 8px 12px; font-size: 13px; background: #fbfcfe; color: var(--text); }
+        padding: 8px 12px; font-size: 13px; background: var(--input-bg); color: var(--text); }
 .toolbar input { min-width: 220px; }
 .toolbar .count { margin-left: auto; font-size: 12px; color: var(--muted); }
 table.cases { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.cases th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
                  padding: 8px 10px; border-bottom: 1px solid var(--border); }
-table.cases td { padding: 11px 10px; border-bottom: 1px solid #f1f4f9; vertical-align: top; }
-td.case-name { color: #334e8d; font-weight: 700; max-width: 340px; }
+table.cases td { padding: 11px 10px; border-bottom: 1px solid var(--row-line); vertical-align: top; }
+td.case-name { color: var(--case-link); font-weight: 700; max-width: 340px; }
 td.case-name .pl { display: block; font-weight: 400; color: var(--muted); font-size: 12px; margin-top: 2px; }
 .badge { display: inline-block; padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
 .b-active { background: #e3edff; color: #1d4ed8; }
@@ -109,7 +129,7 @@ td.case-name .pl { display: block; font-weight: 400; color: var(--muted); font-s
 .b-judged { background: #e6f7ec; color: var(--green); }
 .b-appeal { background: #fff4e0; color: var(--amber); }
 .more-row td { text-align: center; }
-.more-row button { border: 1px solid var(--border); background: #fbfcfe; border-radius: 8px;
+.more-row button { border: 1px solid var(--border); background: var(--input-bg); border-radius: 8px;
                    padding: 8px 22px; cursor: pointer; font-size: 13px; color: var(--dim); }
 
 /* 인사이트 */
@@ -137,6 +157,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
     <div class="right">
       <span class="live">LIVE</span>
       <span id="today"></span>
+      <button class="theme-toggle" id="themeToggle" title="주간/야간 전환">🌙</button>
       <a class="back-link" href="map.html">🗺️ 지도 대시보드 →</a>
     </div>
   </div>
@@ -219,7 +240,27 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 let ALL = [], FILE = "";
 let tableLimit = 30;
 
+
+/* ── 주간/야간 테마: 저장값 우선, 없으면 OS 설정 따름 ── */
+function applyTheme(mode) {
+  document.body.classList.toggle("dark", mode === "dark");
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.textContent = mode === "dark" ? "☀️" : "🌙";
+}
+function initTheme() {
+  const saved = localStorage.getItem("overview-theme");
+  const mode = saved || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+  applyTheme(mode);
+  const btn = document.getElementById("themeToggle");
+  if (btn) btn.addEventListener("click", () => {
+    const next = document.body.classList.contains("dark") ? "light" : "dark";
+    localStorage.setItem("overview-theme", next);
+    applyTheme(next);
+  });
+}
+
 async function boot() {
+  initTheme();
   document.getElementById("today").textContent =
     new Date().toLocaleDateString("ko-KR", { year:"numeric", month:"long", day:"numeric" });
   try {
@@ -266,11 +307,11 @@ function renderKpis() {
   const growth = byYear[yThis-1] ? Math.round(((byYear[yThis]||0) / byYear[yThis-1] - 1) * 100) : null;
 
   const cards = [
-    ["총 소송 건수", total, growth !== null ? `${growth>=0?"▲":"▼"} ${yThis-1} 대비 ${growth>=0?"+":""}${growth}%` : "글로벌 누적", "#4b5563", growth !== null && growth >= 0],
-    ["진행 중", active, "법정 계류", "#b91c1c", false],
-    ["종결 / 판결", done, "종료 사건", "#a16207", false],
-    ["진출 국가", countries, "소송 발생 국가 수", "#15803d", false],
-    ["최근 30일 신규", new30, `${fmtDate(cut30)} 이후 제기`, "#6d28d9", false],
+    ["총 소송 건수", total, growth !== null ? `${growth>=0?"▲":"▼"} ${yThis-1} 대비 ${growth>=0?"+":""}${growth}%` : "글로벌 누적", "var(--k-total)", growth !== null && growth >= 0],
+    ["진행 중", active, "법정 계류", "var(--k-active)", false],
+    ["종결 / 판결", done, "종료 사건", "var(--k-done)", false],
+    ["진출 국가", countries, "소송 발생 국가 수", "var(--k-geo)", false],
+    ["최근 30일 신규", new30, `${fmtDate(cut30)} 이후 제기`, "var(--k-new)", false],
   ];
   document.getElementById("kpis").innerHTML = cards.map(([l,v,f,c,up]) =>
     `<div class="kpi"><div class="k-label">${l}</div><div class="k-value" style="color:${c}">${v}</div>` +
