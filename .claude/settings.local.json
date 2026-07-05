@@ -69,7 +69,8 @@
       "Bash(git -c http.postBuffer=524288000 -c http.version=HTTP/1.1 push origin main:refs/heads/signoff-rewrite)",
       "Bash(git -c http.proxy= -c https.proxy= ls-remote origin refs/heads/main)",
       "Bash(git -c http.proxy= -c https.proxy= push --force-with-lease origin main)",
-      "Bash(xargs -r -n1 git update-ref -d)"
+      "Bash(xargs -r -n1 git update-ref -d)",
+      "Bash(node -e ' *)"
     ]
   }
 }
