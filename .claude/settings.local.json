@@ -56,7 +56,20 @@
       "Bash(python3 -m py_compile tracker/src/run.py tracker/src/github_issue.py tracker/src/trend.py)",
       "Bash(grep -n \"ENABLE_EMAIL_SENDER\\\\|PREVIOUS_ITEM_DEDUP_DAYS\\\\|LOOKBACK_DAYS\\\\|| \\\\`DEBUG\\\\`\" tracker/README.md)",
       "Bash(python3 -m py_compile tracker/src/run.py)",
-      "Bash(python3 -c ' *)"
+      "Bash(python3 -c ' *)",
+      "Bash(python3 -)",
+      "Bash(python3 -c \"import pandas, rapidfuzz, yaml\")",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('.github/workflows/tba-analyzer.yml'\\)\\); yaml.safe_load\\(open\\('tba-analyzer/config.yaml'\\)\\); print\\('✅ YAML 2건 파싱 OK'\\)\")",
+      "Bash(python3 -m py_compile tba-analyzer/src/extract.py)",
+      "Bash(python3 -c \"import yaml; yaml.safe_load\\(open\\('.github/workflows/analyzer-tba.yml'\\)\\); yaml.safe_load\\(open\\('analyzer-tba/config.yaml'\\)\\); print\\('✅ YAML OK'\\)\")",
+      "Read(//work/git-collect/**)",
+      "Bash(gh label *)",
+      "Bash(git branch *)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch -f --msg-filter 'sed \"s/^Co-Authored-By:.*$/Signed-off-by: Geunsik Lim <leemgs@gmail.com>/\"' ee9824a..HEAD)",
+      "Bash(git -c http.postBuffer=524288000 -c http.version=HTTP/1.1 push origin main:refs/heads/signoff-rewrite)",
+      "Bash(git -c http.proxy= -c https.proxy= ls-remote origin refs/heads/main)",
+      "Bash(git -c http.proxy= -c https.proxy= push --force-with-lease origin main)",
+      "Bash(xargs -r -n1 git update-ref -d)"
     ]
   }
 }
