@@ -70,7 +70,9 @@
       "Bash(git -c http.proxy= -c https.proxy= ls-remote origin refs/heads/main)",
       "Bash(git -c http.proxy= -c https.proxy= push --force-with-lease origin main)",
       "Bash(xargs -r -n1 git update-ref -d)",
-      "Bash(node -e ' *)"
+      "Bash(node -e ' *)",
+      "Bash(git -c http.proxy= -c https.proxy= push origin main)",
+      "Bash(git commit -m 'chore: 세션 중 추가된 로컬 권한 허용목록 갱신 *)"
     ]
   }
 }
