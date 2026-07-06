@@ -202,9 +202,11 @@ def _extract_title_line(subject: str, content: str) -> str:
 def get_subject_for_report(report_body: str, fallback_type: str, lookback_days: int = 3) -> str:
     """
     보고서 본문에서 제목(조간뉴스/석간뉴스)을 파싱하여 이메일 제목을 생성합니다.
-    본문 제목이 "(조간뉴스: YYYY-MM-DD)" 처럼 날짜를 포함하므로, 날짜까지
-    통째로 추출해 이메일 제목에도 동일하게 표기한다.
+    본문 제목은 "(조간뉴스: YYYY-MM-DD)" 형식이지만, 메일함에서 날짜순 열람이
+    쉽도록 이메일 제목에서는 "(YYYY-MM-DD 조간뉴스)" 로 날짜를 앞에 표기한다.
     """
+    import re
+
     for line in report_body.splitlines():
         line = line.strip()
         # "(조간뉴스)" / "(조간뉴스: 2026-07-02)" 모두 매칭되도록 닫는 괄호 없이 탐색
@@ -213,14 +215,20 @@ def get_subject_for_report(report_body: str, fallback_type: str, lookback_days: 
                 idx = line.find(marker)
                 title_part = line[idx:].strip()
                 title_part = title_part.replace("**", "").replace("*", "")
+                # "(조간뉴스: YYYY-MM-DD)" → "(YYYY-MM-DD 조간뉴스)" (날짜 없으면 그대로)
+                title_part = re.sub(
+                    r"\((조간뉴스|석간뉴스):\s*(\d{4}-\d{2}-\d{2})\)",
+                    r"(\2 \1)",
+                    title_part,
+                )
                 return f'[AI소송] "{title_part}"'
 
     # 본문에서 제목을 찾지 못한 경우의 폴백 (KST 오늘 날짜 표기)
     today_kst = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
     if fallback_type == "morning":
-        return f'[AI소송] "(조간뉴스: {today_kst}) {lookback_days}일간의 AI학습데이터 소송 동향"'
+        return f'[AI소송] "({today_kst} 조간뉴스) {lookback_days}일간의 AI학습데이터 소송 동향"'
     else:
-        return f'[AI소송] "(석간뉴스: {today_kst}) 당일 AI학습데이터 소송건 요약"'
+        return f'[AI소송] "({today_kst} 석간뉴스) 당일 AI학습데이터 소송건 요약"'
 
 
 def send_email_report(subject: str, content: str) -> None:
