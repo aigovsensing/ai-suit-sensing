@@ -201,34 +201,37 @@ def _extract_title_line(subject: str, content: str) -> str:
 
 def get_subject_for_report(report_body: str, fallback_type: str, lookback_days: int = 3) -> str:
     """
-    보고서 본문에서 제목(조간뉴스/석간뉴스)을 파싱하여 이메일 제목을 생성합니다.
-    본문 제목은 "(조간뉴스: YYYY-MM-DD)" 형식이지만, 메일함에서 날짜순 열람이
-    쉽도록 이메일 제목에서는 "(YYYY-MM-DD 조간뉴스)" 로 날짜를 앞에 표기한다.
+    보고서 본문 제목에서 날짜·기간을 파싱하여 이메일 제목을 조립합니다.
+
+    - 조간: [AI 학습데이터 소송] YYYY-MM-DD 조간 | 소송 동향 (최근 N일간)
+      (N은 본문 제목의 "{N}일간의"에서 추출, 없으면 lookback_days 인자 사용
+       — GEMINI_AISUIT_TREND_DAYS 환경변수로 결정되는 동적 값)
+    - 석간: [AI 학습데이터 소송] YYYY-MM-DD 석간 | 소송 브리핑 (최근 1일간)
+      (석간은 '당일 이슈'에 취합된 데이터만 요약하므로 기간이 항상 1일 고정)
+
+    본문(GitHub 이슈 댓글) 제목은 "(조간뉴스: YYYY-MM-DD)" 형식을 유지하며,
+    이메일 제목만 메일함 날짜순 열람에 맞춰 재구성한다.
     """
     import re
 
     for line in report_body.splitlines():
         line = line.strip()
         # "(조간뉴스)" / "(조간뉴스: 2026-07-02)" 모두 매칭되도록 닫는 괄호 없이 탐색
-        for marker in ("(조간뉴스", "(석간뉴스"):
-            if marker in line:
-                idx = line.find(marker)
-                title_part = line[idx:].strip()
-                title_part = title_part.replace("**", "").replace("*", "")
-                # "(조간뉴스: YYYY-MM-DD)" → "(YYYY-MM-DD 조간뉴스)" (날짜 없으면 그대로)
-                title_part = re.sub(
-                    r"\((조간뉴스|석간뉴스):\s*(\d{4}-\d{2}-\d{2})\)",
-                    r"(\2 \1)",
-                    title_part,
-                )
-                return f'[AI소송] "{title_part}"'
+        if "(조간뉴스" in line or "(석간뉴스" in line:
+            is_morning = "(조간뉴스" in line
+            m_date = re.search(r"\d{4}-\d{2}-\d{2}", line)
+            date_str = m_date.group(0) if m_date else datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
+            if is_morning:
+                m_days = re.search(r"(\d+)일간의", line)
+                days = int(m_days.group(1)) if m_days else lookback_days
+                return f"[AI 학습데이터 소송] {date_str} 조간 | 소송 동향 (최근 {days}일간)"
+            return f"[AI 학습데이터 소송] {date_str} 석간 | 소송 브리핑 (최근 1일간)"
 
     # 본문에서 제목을 찾지 못한 경우의 폴백 (KST 오늘 날짜 표기)
     today_kst = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d")
     if fallback_type == "morning":
-        return f'[AI소송] "({today_kst} 조간뉴스) {lookback_days}일간의 AI학습데이터 소송 동향"'
-    else:
-        return f'[AI소송] "({today_kst} 석간뉴스) 당일 AI학습데이터 소송건 요약"'
+        return f"[AI 학습데이터 소송] {today_kst} 조간 | 소송 동향 (최근 {lookback_days}일간)"
+    return f"[AI 학습데이터 소송] {today_kst} 석간 | 소송 브리핑 (최근 1일간)"
 
 
 def send_email_report(subject: str, content: str) -> None:
