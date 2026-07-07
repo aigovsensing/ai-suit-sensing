@@ -19,5 +19,7 @@ services:
     command: bash -c "apt-get update && apt-get install -y git && pip install -r requirements.txt && uvicorn backend.main:app --host 0.0.0.0 --port 8007"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      # 대시보드 접속 암호 (미설정 시 guest2848)
+      - DASHBOARD_PASSWORD=${DASHBOARD_PASSWORD:-guest2848}
     ports:
       - "8007:8007"

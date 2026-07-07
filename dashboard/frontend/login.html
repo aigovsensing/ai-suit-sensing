@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>로그인 - AI 학습데이터 소송 현황판</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', 'Malgun Gothic', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #1a1f2e 0%, #2c3450 100%);
+  }
+  .login-card {
+    width: 360px;
+    max-width: 90vw;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    padding: 40px 32px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(8px);
+    text-align: center;
+  }
+  .login-card .icon { font-size: 42px; margin-bottom: 12px; }
+  .login-card h1 {
+    color: #eef1f8;
+    font-size: 19px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+  .login-card p.desc {
+    color: #9aa3b8;
+    font-size: 13px;
+    margin-bottom: 26px;
+  }
+  .login-card input[type="password"] {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    background: rgba(0, 0, 0, 0.25);
+    color: #eef1f8;
+    font-size: 15px;
+    outline: none;
+    margin-bottom: 14px;
+    transition: border-color 0.2s;
+  }
+  .login-card input[type="password"]:focus { border-color: #5b8def; }
+  .login-card button {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background: #5b8def;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .login-card button:hover { background: #4a7de0; }
+  .login-card button:disabled { background: #3a4a6a; cursor: wait; }
+  .error {
+    color: #ff8b8b;
+    font-size: 13px;
+    margin-top: 14px;
+    min-height: 18px;
+  }
+</style>
+</head>
+<body>
+  <form class="login-card" id="loginForm">
+    <div class="icon">🔐</div>
+    <h1>AI 학습데이터 소송 현황판</h1>
+    <p class="desc">접속 암호를 입력해 주세요.</p>
+    <input type="password" id="password" placeholder="암호" autocomplete="current-password" autofocus required>
+    <button type="submit" id="submitBtn">로그인</button>
+    <div class="error" id="errorMsg"></div>
+  </form>
+
+<script>
+  const form = document.getElementById('loginForm');
+  const errorMsg = document.getElementById('errorMsg');
+  const submitBtn = document.getElementById('submitBtn');
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    errorMsg.textContent = '';
+    submitBtn.disabled = true;
+    try {
+      const res = await fetch('/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: document.getElementById('password').value })
+      });
+      if (res.ok) {
+        location.href = '/';
+      } else {
+        const data = await res.json().catch(() => ({}));
+        errorMsg.textContent = data.detail || '암호가 올바르지 않습니다.';
+        submitBtn.disabled = false;
+      }
+    } catch (err) {
+      errorMsg.textContent = '서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+      submitBtn.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>

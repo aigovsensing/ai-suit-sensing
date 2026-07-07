@@ -1,11 +1,13 @@
 import os
+import hmac
+import hashlib
 import pymysql
 import pandas as pd
 import logging
 import sys
-from fastapi import FastAPI, Query, HTTPException
+from fastapi import FastAPI, Query, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from typing import Optional, List
 from collector.builder import build_from_api, build_from_csv
 import google.generativeai as genai
@@ -47,6 +49,61 @@ else:
     logger.warning("GEMINI_API_KEY not found. Report generation will fail.")
 
 app = FastAPI()
+
+# ---------------------------------------------------------------------------
+# 간이 로그인 게이트
+# 외부에 노출된 대시보드에 아무나 접속하지 못하도록 최소한의 공용 암호를 요구한다.
+# 암호는 DASHBOARD_PASSWORD 환경변수로 바꿀 수 있고, 미설정 시 guest2848.
+# 세션은 암호에서 파생한 HMAC 토큰 쿠키로 유지되므로 서버 재시작에도 유효하다.
+# ---------------------------------------------------------------------------
+DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "guest2848")
+_AUTH_COOKIE = "dashboard_auth"
+_AUTH_MAX_AGE = 7 * 24 * 3600  # 7일
+
+
+def _auth_token() -> str:
+    return hmac.new(DASHBOARD_PASSWORD.encode(), b"ai-suit-dashboard-auth-v1", hashlib.sha256).hexdigest()
+
+
+def _is_authenticated(request: Request) -> bool:
+    return hmac.compare_digest(request.cookies.get(_AUTH_COOKIE, ""), _auth_token())
+
+
+@app.middleware("http")
+async def require_login(request: Request, call_next):
+    if request.url.path == "/login" or _is_authenticated(request):
+        return await call_next(request)
+    # 브라우저 fetch(API) 요청은 리다이렉트 대신 401을 돌려줘야 화면에서 오류를 알 수 있다.
+    if request.url.path.startswith("/api/"):
+        return JSONResponse({"detail": "로그인이 필요합니다."}, status_code=401)
+    return RedirectResponse(url="/login", status_code=302)
+
+
+@app.get("/login")
+def login_page():
+    return FileResponse(os.path.join(_frontend_dir, "login.html"))
+
+
+@app.post("/login")
+async def login(request: Request):
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    password = str(body.get("password", ""))
+    if not hmac.compare_digest(password.encode(), DASHBOARD_PASSWORD.encode()):
+        return JSONResponse({"detail": "암호가 올바르지 않습니다."}, status_code=401)
+    response = JSONResponse({"ok": True})
+    response.set_cookie(_AUTH_COOKIE, _auth_token(), max_age=_AUTH_MAX_AGE, httponly=True, samesite="lax")
+    return response
+
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(_AUTH_COOKIE)
+    return response
+
 
 def get_conn():
     return pymysql.connect(

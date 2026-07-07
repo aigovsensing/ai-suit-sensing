@@ -56,6 +56,20 @@ GEMINI_API_KEY="your_actual_api_key" docker-compose -f docker/docker-compose.yml
 ```
 *   **접속 주소**: `http://localhost:8007`
 
+#### 🔐 접속 암호 (로그인)
+외부에 노출된 대시보드에 아무나 접속하지 못하도록 간이 로그인 게이트가 적용되어 있습니다.
+첫 접속 시 로그인 페이지(`/login`)로 이동하며, 암호 입력 후 7일간 세션이 유지됩니다.
+
+*   **기본 암호**: `guest2848`
+*   **암호 변경**: `DASHBOARD_PASSWORD` 환경변수로 설정합니다.
+    ```bash
+    DASHBOARD_PASSWORD="my_secret" GEMINI_API_KEY="your_actual_api_key" docker-compose -f docker/docker-compose.yml up -d
+    ```
+*   **로그아웃**: `http://localhost:8007/logout`
+
+> [!NOTE]
+> 공용 계정 하나로 쓰는 최소한의 접근 제한입니다. 민감 데이터를 다루게 되면 HTTPS(리버스 프록시)와 개별 계정 인증 도입을 권장합니다.
+
 #### ⚠️ Troubleshooting: docker-compose client version error
 실행 시 `client version 1.43 is too old. Minimum supported API version is 1.44` 오류가 발생한다면, 구형 `docker-compose` 바이너리를 최신 버전으로 업데이트해야 합니다. (Docker Engine v29.1.3 이상은 API 1.44를 요구하지만, 구형 `docker-compose`는 API 1.43까지만 지원하기 때문에 발생하는 문제입니다.)
 
