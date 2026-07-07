@@ -90,7 +90,9 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
     """같은 라벨을 가진 모니터링 이슈 중 '오늘/현재' 이슈를 제외한 나머지 OPEN 이슈를 닫습니다."""
     closed: list[int] = []
     issues = list_issues_by_label(owner, repo, token, label, state="open")
-    prefix = f"{base_title} ("
+    # 제목 개편(AI 소송 모니터링 → AI학습데이터 저작권 소송 모니터링) 전환기에
+    # 구 제목으로 열려 있는 이슈도 닫히도록 구 접두어를 함께 매칭한다.
+    prefixes = tuple({f"{base_title} (", "AI 소송 모니터링 ("})
     
     # [수정] footer 문자열을 올바르게 합치고 따옴표를 닫았습니다.
     footer = (
@@ -103,7 +105,7 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
         if t == today_title:
             continue
         # base_title (YYYY-MM-DD) 형태만 닫기
-        if t.startswith(prefix) and t.endswith(")"):
+        if t.startswith(prefixes) and t.endswith(")"):
             num = int(it["number"])
             
             # [추가] 이슈를 닫기 전에 모든 댓글을 취합하여 통합 리포트 작성 및 Gemini 분석

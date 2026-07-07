@@ -52,7 +52,7 @@ jobs:
           # (옵션) 기사 주소 섹션을 <details>로 접기
           COLLAPSE_ARTICLE_URLS: ${{ vars.COLLAPSE_ARTICLE_URLS }}
 
-          ISSUE_TITLE_BASE: "AI 소송 모니터링"
+          ISSUE_TITLE_BASE: "AI학습데이터 저작권 소송 모니터링"
           ISSUE_LABEL: "ai-lawsuit-monitor"
           # (옵션) 지브리 스타일 이미지 리포트 생성 활성화 (1: 활성화)
           GEMINI_DAILY_REPORT_IMAGEGEN: ${{ vars.GEMINI_DAILY_REPORT_IMAGEGEN || secrets.GEMINI_DAILY_REPORT_IMAGEGEN }}

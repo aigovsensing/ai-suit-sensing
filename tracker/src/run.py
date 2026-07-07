@@ -36,7 +36,7 @@ def main() -> None:
         missing = [k for k, v in {"GITHUB_OWNER": owner, "GITHUB_REPO": repo, "GITHUB_TOKEN": gh_token, "SLACK_WEBHOOK_URL": slack_webhook}.items() if not v]
         raise ValueError(f"필수 환경 변수가 누락되었습니다: {', '.join(missing)}")
 
-    base_title = os.environ.get("ISSUE_TITLE_BASE", "AI 소송 모니터링")
+    base_title = os.environ.get("ISSUE_TITLE_BASE", "AI학습데이터 저작권 소송 모니터링")
     lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
     # 필요 시 2로 변경: 환경변수 LOOKBACK_DAYS=2
     
