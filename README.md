@@ -161,6 +161,50 @@ sequenceDiagram
 
 ---
 
+## ⚙️ 동작 흐름 (Operation Flow)
+
+매일 GitHub Actions가 아래 순서로 실행합니다. 각 단계는 독립적으로 실패를 흡수하므로(조간/석간/이메일/Slack 중 하나가 실패해도 나머지는 계속 진행), 한 단계의 오류가 전체 파이프라인을 멈추지 않습니다. 수집 결과가 0건이면(DEBUG=0) 그 회차의 발행은 조용히 건너뜁니다.
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant CRON as ⏰ Actions cron
+    participant T as 📡 tracker
+    participant SRC as 🌐 뉴스·법원 DB
+    participant GI as 🐙 GitHub Issue
+    participant GM as ✨ Gemini
+    participant N as 📧 이메일·Slack
+    participant A as 🧪 analyzer-tba
+    participant D as 📊 dashboard
+
+    CRON->>T: KST 08~17시 매시간 실행<br/>(그 외 시간대는 3시간마다)
+    T->>SRC: CourtListener·RECAP 검색 + Google News RSS 수집
+    SRC-->>T: 소송 문서·도켓·기사 목록
+    T->>T: 중복 제거 (당일 + 이전 이슈 댓글 대조)
+    T->>GI: 일자별 이슈에 신규/업데이트 리포트 댓글 누적
+    T->>GI: 전날 이슈 자동 Close (통합 리포트·석간뉴스 백필)
+    T->>GM: 당일 첫 실행 시 동향 요약 요청
+    GM-->>GI: 🗓️ 조간뉴스 댓글 (최근 N일 동향)
+    T->>N: 조간뉴스 이메일 발송 + Slack 요약 전송
+    T->>GM: KST 21시 이후 실행 시 당일 요약 요청
+    GM-->>GI: 🧠 석간뉴스 댓글 (당일 소송건 요약)
+    T->>N: 석간뉴스 이메일 발송
+    CRON->>A: 매일 KST 10:00 실행
+    A->>GI: 최근 이슈 리포트 수집·분석 (LLM 구조화)
+    A->>A: 정본 CSV 대조 → NEW/UPDATE 변경 제안 PR 생성
+    Note over A,D: 👤 사람이 PR을 merge 하면 정본 CSV 반영 (HITL)
+    D->>D: 갱신된 CSV를 대시보드로 시각화 (localhost:8007, 로그인 필요)
+```
+
+1. **센싱** — `tracker`가 KST 08~17시에는 매시간, 그 외에는 3시간마다 CourtListener·RECAP과 Google News RSS에서 AI 학습데이터 소송을 수집합니다.
+2. **리포트** — 당일·이전 이슈 댓글과 대조해 중복을 제거한 뒤, 일자별 GitHub 이슈(`AI학습데이터 저작권 소송 모니터링 (YYYY-MM-DD)`)에 신규/업데이트 건을 댓글로 누적합니다.
+3. **조간·석간** — 당일 첫 실행에서 Gemini가 🗓️ 조간뉴스(최근 N일 동향)를, KST 21시 이후 실행에서 🧠 석간뉴스(당일 요약)를 생성해 이슈 댓글과 이메일로 발행합니다.
+4. **마감** — 다음 날 새 이슈가 생성되면 전날 이슈는 통합 리포트(통계/테이블)를 남기고 자동 Close 됩니다. 석간뉴스가 미발행 상태라면 이 시점에 백필합니다.
+5. **정리** — 매일 KST 10:00 `analyzer-tba`가 쌓인 이슈 리포트를 분석해 정본 CSV 대비 변경 제안 PR을 생성하고, **반영 여부는 사람이 PR 검토로 결정**합니다.
+6. **시각화** — 승인되어 갱신된 정본 CSV를 `dashboard`(FastAPI, `:8007`)가 지도 히트맵·통계·소송 목록으로 시각화합니다. 접속에는 로그인 암호가 필요합니다.
+
+---
+
 ## 📦 구성 요소 상세
 
 ### 1. [`tracker/`](./tracker) — 소송 센싱 (수집/탐지)
