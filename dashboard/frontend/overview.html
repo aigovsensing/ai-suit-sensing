@@ -98,6 +98,7 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .geo .g .code { font-size: 15px; font-weight: 800; color: var(--dim); letter-spacing: 2px; }
 .geo .g .n { font-size: 26px; font-weight: 800; color: var(--geo-num); font-family: 'Outfit',sans-serif; margin: 6px 0 2px; }
 .geo .g .nm { font-size: 12px; color: var(--muted); }
+.geo .g .gp { font-size: 11px; font-weight: 700; color: var(--dim); margin-top: 4px; }
 
 /* 도넛 (conic-gradient) */
 .donut-wrap { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
@@ -128,9 +129,14 @@ td.case-name .pl { display: block; font-weight: 400; color: var(--muted); font-s
 .b-closed { background: #eef0f3; color: #4b5563; }
 .b-judged { background: #e6f7ec; color: var(--green); }
 .b-appeal { background: #fff4e0; color: var(--amber); }
-.more-row td { text-align: center; }
-.more-row button { border: 1px solid var(--border); background: var(--input-bg); border-radius: 8px;
-                   padding: 8px 22px; cursor: pointer; font-size: 13px; color: var(--dim); }
+/* 게시판 페이지네이션 */
+.pager { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 16px; flex-wrap: wrap; }
+.pager button { border: 1px solid var(--border); background: var(--input-bg); border-radius: 8px;
+                min-width: 34px; padding: 7px 10px; cursor: pointer; font-size: 13px; color: var(--dim); }
+.pager button:hover:not(:disabled) { border-color: var(--blue); color: var(--blue); }
+.pager button.cur { background: var(--blue); border-color: var(--blue); color: #fff; font-weight: 700; }
+.pager button:disabled { opacity: 0.4; cursor: default; }
+.pager .ell { color: var(--muted); padding: 0 2px; }
 
 /* 인사이트 */
 .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 20px; }
@@ -170,7 +176,8 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
     <div class="kpis" id="kpis"></div>
 
     <div class="grid2">
-      <div class="card"><h2>📈 연도별 소송 증가 추이</h2><div class="ybars" id="yearChart"></div></div>
+      <div class="card"><h2>📈 연도별 소송 증가 추이</h2><div class="ybars" id="yearChart"></div>
+        <div id="yearNote" style="font-size:11px;color:var(--muted);margin-top:12px;text-align:right;"></div></div>
       <div class="card"><h2>🎯 피고 기업별 소송 건수 (Top 7)</h2><div id="defChart"></div></div>
     </div>
 
@@ -187,12 +194,23 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
         <input id="q" type="search" placeholder="🔍 소송명 / 피고 검색...">
         <select id="fCountry"><option value="">전체 국가</option></select>
         <select id="fStatus"><option value="">전체 상태</option></select>
+        <select id="fPageSize" title="한 페이지 최대 출력 건수">
+          <option value="5">5개씩</option>
+          <option value="10">10개씩</option>
+          <option value="15" selected>15개씩</option>
+          <option value="30">30개씩</option>
+          <option value="40">40개씩</option>
+          <option value="50">50개씩</option>
+          <option value="70">70개씩</option>
+          <option value="1000">1000개씩</option>
+        </select>
         <span class="count" id="tblCount"></span>
       </div>
       <table class="cases">
         <thead><tr><th>ID</th><th>소송명</th><th>피고</th><th>국가</th><th>상태</th><th>소송제기일</th><th>최근 업데이트</th></tr></thead>
         <tbody id="tbody"></tbody>
       </table>
+      <div class="pager" id="pager"></div>
     </div>
 
     <div class="section-title">💡 핵심 인사이트 (데이터 자동 산출)</div>
@@ -238,7 +256,7 @@ const parseD = s => { const d = new Date(String(s||"").trim()); return isNaN(d) 
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 let ALL = [], FILE = "";
-let tableLimit = 30;
+let page = 1, pageSize = 15; // 게시판: 기본 15건씩, 선택폼(5~1000)으로 조절
 
 
 /* ── 주간/야간 테마: 저장값 우선, 없으면 OS 설정 따름 ── */
@@ -304,10 +322,16 @@ function renderKpis() {
   const cut30 = new Date(latest); cut30.setDate(cut30.getDate() - 30);
   const new30 = ALL.filter(r => r._d && r._d >= cut30).length;
   const yThis = latest.getFullYear(), byYear = countByYear();
-  const growth = byYear[yThis-1] ? Math.round(((byYear[yThis]||0) / byYear[yThis-1] - 1) * 100) : null;
+  // [FIX] 진행 중인 올해(부분 집계)를 전년도 '연간 전체'와 비교하면 증감률이 왜곡된다
+  //       (예: 2025년 68건 vs 2026년 1~6월 68건 → +0%). 전년도 '같은 날짜까지'
+  //       제기된 건수(동기간, YTD)와 비교해야 실제 증가세가 보인다.
+  const prevCut = new Date(latest); prevCut.setFullYear(yThis - 1);
+  const ytdPrev = ALL.filter(r => r._d && r._d.getFullYear() === yThis-1 && r._d <= prevCut).length;
+  const growth = ytdPrev ? Math.round(((byYear[yThis]||0) / ytdPrev - 1) * 100) : null;
+  const mmdd = `${latest.getMonth()+1}.${latest.getDate()}`;
 
   const cards = [
-    ["총 소송 건수", total, growth !== null ? `${growth>=0?"▲":"▼"} ${yThis-1} 대비 ${growth>=0?"+":""}${growth}%` : "글로벌 누적", "var(--k-total)", growth !== null && growth >= 0],
+    ["총 소송 건수", total, growth !== null ? `${growth>=0?"▲":"▼"} ${yThis-1}년 동기(~${mmdd}) 대비 ${growth>=0?"+":""}${growth}%` : "글로벌 누적", "var(--k-total)", growth !== null && growth >= 0],
     ["진행 중", active, "법정 계류", "var(--k-active)", false],
     ["종결 / 판결", done, "종료 사건", "var(--k-done)", false],
     ["진출 국가", countries, "소송 발생 국가 수", "var(--k-geo)", false],
@@ -324,14 +348,21 @@ function countByYear() {
   return m;
 }
 
-/* 연도별 세로 막대 */
+/* 연도별 세로 막대 — 진행 중인 올해는 부분 집계임을 구분 표기 */
 function renderYearChart() {
   const m = countByYear();
   const years = Object.keys(m).map(Number).sort().slice(-6);
   const max = Math.max(...years.map(y => m[y]), 1);
-  document.getElementById("yearChart").innerHTML = years.map(y =>
-    `<div class="ybar"><div class="cnt">${m[y]}</div>` +
-    `<div class="bar" style="height:${Math.max(4, m[y]/max*160)}px"></div><div class="yr">${y}</div></div>`).join("");
+  const latest = ALL.reduce((mx,r) => r._d && r._d > mx ? r._d : mx, new Date(0));
+  const yNow = latest.getFullYear();
+  document.getElementById("yearChart").innerHTML = years.map(y => {
+    const partial = y === yNow;
+    return `<div class="ybar"><div class="cnt">${m[y]}${partial ? "*" : ""}</div>` +
+      `<div class="bar" style="height:${Math.max(4, m[y]/max*160)}px${partial ? ";background:repeating-linear-gradient(45deg,#93b4f8,#93b4f8 8px,#bcd0fb 8px,#bcd0fb 16px)" : ""}"></div>` +
+      `<div class="yr">${y}${partial ? "*" : ""}</div></div>`;
+  }).join("");
+  document.getElementById("yearNote").textContent =
+    `* ${yNow}년은 ${fmtDate(latest)}까지의 부분 집계입니다 (연중 진행).`;
 }
 
 /* 피고 기업별 Top7 — 복수 피고(콤마 구분) 개별 집계 */
@@ -350,14 +381,16 @@ function renderDefChart() {
     `<div class="val">${n}</div></div>`).join("");
 }
 
-/* 국가 카드 */
+/* 국가 카드 — 전 세계 전체 소송 대비 비율(%) 병기 */
 function renderGeo() {
   const m = {};
   ALL.forEach(r => { const c = (r.country||"").trim(); if (c) m[c] = (m[c]||0)+1; });
   const list = Object.entries(m).sort((a,b) => b[1]-a[1]);
+  const total = ALL.length || 1;
+  const pct = n => { const p = n/total*100; return (p >= 10 ? Math.round(p) : p.toFixed(1).replace(/\.0$/,"")) + "%"; };
   document.getElementById("geoCards").innerHTML = list.map(([name,n]) =>
     `<div class="g"><div class="code">${COUNTRY_CODE[name] || "—"}</div><div class="n">${n}</div>` +
-    `<div class="nm">${esc(name)}</div></div>`).join("");
+    `<div class="nm">${esc(name)}</div><div class="gp">${pct(n)}</div></div>`).join("");
 }
 
 /* 대상 데이터 유형 도넛 */
@@ -385,7 +418,7 @@ function renderDonut() {
     `${esc(label)} <b>${n}</b><span class="pct">(${Math.round(n/total*100)}%)</span></div>`).join("");
 }
 
-/* 전체 소송 목록 (검색/필터 + 더보기) */
+/* 전체 소송 목록 (검색/필터 + 게시판 페이지네이션) */
 function initTable() {
   const cSel = document.getElementById("fCountry"), sSel = document.getElementById("fStatus");
   [...new Set(ALL.map(r => r.country).filter(Boolean))].sort()
@@ -393,9 +426,15 @@ function initTable() {
   [...new Set(ALL.map(r => r.status).filter(Boolean))].sort()
     .forEach(s => sSel.insertAdjacentHTML("beforeend", `<option>${esc(s)}</option>`));
   ["q","fCountry","fStatus"].forEach(id =>
-    document.getElementById(id).addEventListener("input", () => { tableLimit = 30; renderTable(); }));
+    document.getElementById(id).addEventListener("input", () => { page = 1; renderTable(); }));
+  document.getElementById("fPageSize").addEventListener("change", e => {
+    pageSize = parseInt(e.target.value, 10) || 15;
+    page = 1;
+    renderTable();
+  });
   renderTable();
 }
+function gotoPage(p) { page = p; renderTable(); }
 function renderTable() {
   const q = document.getElementById("q").value.trim().toLowerCase();
   const fc = document.getElementById("fCountry").value, fs = document.getElementById("fStatus").value;
@@ -403,8 +442,11 @@ function renderTable() {
     .filter(r => (!fc || r.country === fc) && (!fs || r.status === fs) &&
       (!q || `${r.case_name} ${r.defendant} ${r.plaintiff}`.toLowerCase().includes(q)))
     .sort((a,b) => (b._d||0) - (a._d||0));
-  const shown = rows.slice(0, tableLimit);
-  const body = shown.map(r => {
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  page = Math.min(Math.max(1, page), totalPages);
+  const start = (page - 1) * pageSize;
+  const shown = rows.slice(start, start + pageSize);
+  document.getElementById("tbody").innerHTML = shown.map(r => {
     const [cls, txt] = BADGE[r._kind];
     const upd = (r.last_update || "").trim() || (r.result || "").trim() || "—";
     return `<tr>
@@ -418,10 +460,25 @@ function renderTable() {
       <td style="max-width:200px">${esc(upd).slice(0,80)}</td>
     </tr>`;
   }).join("");
-  const more = rows.length > tableLimit
-    ? `<tr class="more-row"><td colspan="7"><button onclick="tableLimit+=50;renderTable()">더 보기 (${rows.length - tableLimit}건 남음)</button></td></tr>` : "";
-  document.getElementById("tbody").innerHTML = body + more;
-  document.getElementById("tblCount").textContent = `${shown.length} / ${rows.length}건 표시`;
+  document.getElementById("tblCount").textContent = rows.length
+    ? `전체 ${rows.length}건 중 ${start + 1}–${start + shown.length}건 표시 (${page}/${totalPages} 페이지)`
+    : "검색 결과 없음";
+  renderPager(totalPages);
+}
+/* 페이지 번호: 처음/현재±2/끝만 노출하고 사이는 …으로 축약 */
+function renderPager(totalPages) {
+  const el = document.getElementById("pager");
+  if (totalPages <= 1) { el.innerHTML = ""; return; }
+  const nums = [];
+  for (let p = 1; p <= totalPages; p++) {
+    if (p === 1 || p === totalPages || Math.abs(p - page) <= 2) nums.push(p);
+    else if (nums[nums.length - 1] !== "…") nums.push("…");
+  }
+  el.innerHTML =
+    `<button onclick="gotoPage(${page-1})" ${page===1?"disabled":""}>‹ 이전</button>` +
+    nums.map(p => p === "…" ? `<span class="ell">…</span>` :
+      `<button class="${p===page?"cur":""}" onclick="gotoPage(${p})">${p}</button>`).join("") +
+    `<button onclick="gotoPage(${page+1})" ${page===totalPages?"disabled":""}>다음 ›</button>`;
 }
 
 /* 핵심 인사이트: 데이터에서 자동 산출 */
@@ -436,9 +493,14 @@ function renderInsights() {
     .sort((a,b)=>b[1]-a[1])[0] || ["—",0];
   const latest = [...ALL].filter(r=>r._d).sort((a,b)=>b._d-a._d)[0];
   const usShare = Math.round(ALL.filter(r=>r.country==="미국").length / (ALL.length||1) * 100);
+  // 전년 동기간(YTD) 비교 — KPI 카드와 동일 기준
+  const prevCut = latest ? new Date(latest._d) : null;
+  if (prevCut) prevCut.setFullYear(yLast - 1);
+  const ytdPrev = prevCut ? ALL.filter(r => r._d && r._d.getFullYear() === yLast-1 && r._d <= prevCut).length : 0;
+  const ytdTxt = ytdPrev ? ` 전년 동기(${yPrev}년 같은 기간 ${ytdPrev}건) 대비 ${Math.round(((byYear[yLast]||0)/ytdPrev-1)*100)}% 증가한 수치입니다.` : "";
 
   const items = [
-    ["⚖️","소송 추이", `${yPrev}년 ${byYear[yPrev]||0}건 → ${yLast}년 ${byYear[yLast]||0}건 제기. AI 학습데이터 관련 법적 분쟁이 지속되고 있으며, 전체 누적 ${ALL.length}건에 도달했습니다.`],
+    ["⚖️","소송 추이", `${yPrev}년 ${byYear[yPrev]||0}건 → ${yLast}년 ${byYear[yLast]||0}건(집계 중) 제기.${ytdTxt} 전체 누적 ${ALL.length}건에 도달했습니다.`],
     ["🎯","최다 피소 기업", `${defTop[0]} (${defTop[1]}건)이 가장 많은 소송에 피소되었습니다. 생성형 AI 선두 기업에 소송이 집중되는 양상입니다.`],
     ["📁","주요 분쟁 데이터", `대상 데이터 유형 중 '${typeTop[0]}'(${typeTop[1]}건)이 최다입니다. 미국 소송 비중은 ${usShare}%로 미국 법원 판례가 글로벌 기준점 역할을 하고 있습니다.`],
     ["🕐","최신 동향", latest ? `가장 최근 소송은 ${fmtDate(latest._d)} 제기된 「${latest.case_name}」(피고: ${latest.defendant}) 입니다. 상단 티커에서 최근 10건을 확인하세요.` : "최근 데이터 없음"],

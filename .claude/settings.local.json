@@ -76,7 +76,12 @@
       "Bash(python3 -c \"import fastapi, pymysql, pandas, google.generativeai, docx, uvicorn\")",
       "Bash(python3 -m venv /tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv)",
       "Bash(/tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv/bin/pip install *)",
-      "Bash(DASHBOARD_PASSWORD=mysecret99 /tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv/bin/python -c ' *)"
+      "Bash(DASHBOARD_PASSWORD=mysecret99 /tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv/bin/python -c ' *)",
+      "Bash(/tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv/bin/python -c ' *)",
+      "Bash(/tmp/claude-1000/-work-git-collect-ai-suit-sensing/d6abce77-f90e-461b-baeb-584bd7addaa1/scratchpad/venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 18007)",
+      "mcp__plugin_playwright_playwright__browser_run_code_unsafe",
+      "mcp__plugin_playwright_playwright__browser_close",
+      "Bash(git commit -m 'fix\\(dashboard\\): 증감률 왜곡 수정 + 국가별 비율 표기 + 소송 목록 게시판화 *)"
     ]
   }
 }
