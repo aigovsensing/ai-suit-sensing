@@ -82,7 +82,9 @@
       "mcp__plugin_playwright_playwright__browser_run_code_unsafe",
       "mcp__plugin_playwright_playwright__browser_close",
       "Bash(git commit -m 'fix\\(dashboard\\): 증감률 왜곡 수정 + 국가별 비율 표기 + 소송 목록 게시판화 *)",
-      "Bash(git -c http.proxy= -c https.proxy= pull --rebase origin main)"
+      "Bash(git -c http.proxy= -c https.proxy= pull --rebase origin main)",
+      "Bash(python3 -m py_compile tracker/src/run.py tracker/src/github_issue.py)",
+      "Bash(git commit -m 'feat\\(tracker\\): GitHub 이슈 제목을 '\\\\''AI학습데이터 저작권 소송 모니터링'\\\\''으로 변경 *)"
     ]
   }
 }
