@@ -134,6 +134,13 @@ def _finish_analyze(cfg, base, base_path, extracted, source_issue, args) -> int:
         cs.save(new_base, candidate_csv)
         print(f"[✓] 후보 CSV: {candidate_csv}  → PR로 올려 검토(merge=accept/close=reject)")
 
+    # 고신뢰 자동 머지 판정: '모든' 제안의 신뢰도가 임계값 이상일 때만 true.
+    # NEW 는 confidence 0.9 고정이므로 신규 소송이 포함된 날은 항상 사람 검토(HITL).
+    auto_threshold = float(cfg.get("matching", {}).get("auto_accept_min_confidence", 0.95))
+    confidences = [float(p.get("confidence", 0.0)) for p in changeset["proposals"]]
+    min_confidence = min(confidences) if confidences else None
+    auto_merge = bool(has_changes and confidences and min_confidence >= auto_threshold)
+
     # 워크플로우(방식 A)가 읽을 산출물 경로/요약
     last_run = {
         "stamp": stamp,
@@ -144,6 +151,9 @@ def _finish_analyze(cfg, base, base_path, extracted, source_issue, args) -> int:
         "markdown": md_path,
         "candidate_csv": candidate_csv,
         "base_csv": base_path,
+        "min_confidence": min_confidence,
+        "auto_merge_threshold": auto_threshold,
+        "auto_merge": auto_merge,
     }
     with open(os.path.join(proposals_dir, "last_run.json"), "w", encoding="utf-8") as f:
         json.dump(last_run, f, ensure_ascii=False, indent=2)

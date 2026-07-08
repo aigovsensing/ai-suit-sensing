@@ -3,6 +3,11 @@ name: analyzer
 # 검토 방식 A (GitHub PR 기반):
 #   analyze → 후보 CSV 생성 → 브랜치 커밋 → PR 자동 생성
 #   사람이 PR을 merge 하면 정본 CSV 반영(accept), close 하면 미반영(reject).
+#
+# 고신뢰 자동 머지 (2026-07-08 채택):
+#   모든 제안의 신뢰도가 auto_accept_min_confidence(config.yaml, 0.95) 이상이면
+#   PR을 자동 머지한다. NEW 는 confidence 0.9 고정이므로 신규 소송이 포함된
+#   날은 항상 사람 검토(HITL)로 남는다. 감사 이력은 머지된 PR로 추적 가능.
 
 permissions:
   contents: write
@@ -62,6 +67,9 @@ jobs:
           UPD=$(python -c "import json;print(json.load(open('$LAST'))['update'])")
           MD=$(python -c "import json;print(json.load(open('$LAST'))['markdown'])")
           CSV=$(python -c "import json;print(json.load(open('$LAST'))['candidate_csv'])")
+          AUTO=$(python -c "import json;print(json.load(open('$LAST')).get('auto_merge', False))")
+          MINC=$(python -c "import json;print(json.load(open('$LAST')).get('min_confidence'))")
+          THR=$(python -c "import json;print(json.load(open('$LAST')).get('auto_merge_threshold'))")
 
           BRANCH="analyzer/${STAMP}"
           cd "$GITHUB_WORKSPACE"  # repo root
@@ -72,8 +80,18 @@ jobs:
           git commit -m "data: analyzer 제안 (NEW ${NEW}/UPDATE ${UPD}) [${STAMP}]"
           git push origin "$BRANCH"
 
-          gh pr create \
+          PR_URL=$(gh pr create \
             --title "🤖 소송 데이터 갱신 제안 (NEW ${NEW}/UPDATE ${UPD}) — ${STAMP}" \
             --body-file "$MD" \
             --base main --head "$BRANCH" \
-            --label "analyzer"
+            --label "analyzer")
+          echo "PR: $PR_URL"
+
+          # 고신뢰 자동 머지: 모든 제안 신뢰도 >= 임계값일 때만 (NEW 포함 시 항상 HITL)
+          if [ "$AUTO" = "True" ]; then
+            gh pr comment "$PR_URL" --body "🔓 **자동 머지** — 모든 제안의 신뢰도(최저 ${MINC})가 임계값(${THR}) 이상입니다. 신규(NEW) 소송이 없어 도켓번호/System ID로 확정 매칭된 업데이트만 포함하므로 사람 검토를 생략합니다. 되돌리려면 이 PR을 revert 하세요."
+            gh pr merge "$PR_URL" --merge --delete-branch
+            echo "자동 머지 완료 (min_confidence=${MINC} >= ${THR})"
+          else
+            echo "사람 검토 대기(HITL): min_confidence=${MINC}, threshold=${THR}"
+          fi
