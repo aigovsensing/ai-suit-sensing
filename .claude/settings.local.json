@@ -105,7 +105,10 @@
       "Bash(awk -F: '{print $1}')",
       "Bash(sed -i 's/Analyzer-TBA/Analyzer/g; s/analyzer-tba/analyzer/g; s/analyzer_tba/analyzer/g' README.md .github/workflows/analyzer.yml analyzer/README.md analyzer/implementation-plan.md analyzer/src/__init__.py analyzer/src/report.py analyzer/src/run.py analyzer/tests/test_csv_store.py analyzer/tests/test_pipeline.py .claude/settings.local.json)",
       "Bash(python3 -m pytest tests/ -q)",
-      "Bash(rm -f proposals/changeset_20260708_1612.* proposals/last_run.json)"
+      "Bash(rm -f proposals/changeset_20260708_1612.* proposals/last_run.json)",
+      "Bash(gh workflow *)",
+      "Bash(gh run *)",
+      "Bash(echo \"exit=$?\")"
     ]
   }
 }
