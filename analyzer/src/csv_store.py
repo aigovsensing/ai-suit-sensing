@@ -36,14 +36,14 @@ COLUMNS: List[str] = [
     "국가*",
     "소송금액 (USD)",
     "개요 및 배경 (By Gauss)",
-    "Tracker(업로드 시 제외)",
-    "관련 주소 (초기)(업로드 시 제외)",
+    "Tracker",
+    "관련 주소 (초기)",
     "Last Update(업로드 시 제외)",
     "진행결과",
     "히스토리(업로드 시 제외)",
     "변호사(원고)",
     "변호사(피고)",
-    "비고(업로드 시 제외)",
+    "비고",
 ]
 
 # 의미 기반 컬럼 상수 (코드에서 직접 참조)
@@ -62,16 +62,24 @@ COL_COURT = "법원"
 COL_COUNTRY = "국가*"
 COL_AMOUNT = "소송금액 (USD)"
 COL_SUMMARY = "개요 및 배경 (By Gauss)"
-COL_TRACKER = "Tracker(업로드 시 제외)"
-COL_RELATED_URL = "관련 주소 (초기)(업로드 시 제외)"
+COL_TRACKER = "Tracker"
+COL_RELATED_URL = "관련 주소 (초기)"
 COL_LAST_UPDATE = "Last Update(업로드 시 제외)"
 COL_RESULT = "진행결과"
 COL_HISTORY = "히스토리(업로드 시 제외)"
 COL_PLAINTIFF_LAWYER = "변호사(원고)"
 COL_DEFENDANT_LAWYER = "변호사(피고)"
-COL_REMARKS = "비고(업로드 시 제외)"
+COL_REMARKS = "비고"
 
 DEFAULT_TITLE = "AI 데이터 소송 현황"
+
+# 2026-07 이전 CSV 는 일부 컬럼에 "(업로드 시 제외)" 접미사가 붙어 있었다.
+# 로드 시 아래 별칭으로 흡수해 현행 스키마로 정규화한다 (저장은 항상 COLUMNS 기준).
+LEGACY_HEADER_ALIASES: Dict[str, str] = {
+    "Tracker(업로드 시 제외)": COL_TRACKER,
+    "관련 주소 (초기)(업로드 시 제외)": COL_RELATED_URL,
+    "비고(업로드 시 제외)": COL_REMARKS,
+}
 
 
 def normalize_docket(value: str) -> str:
@@ -159,7 +167,7 @@ def load(path: str) -> CanonicalCsv:
 
     title_row = rows[0]
     period_row = rows[1]
-    header = [h.strip() for h in rows[2]]
+    header = [LEGACY_HEADER_ALIASES.get(h.strip(), h.strip()) for h in rows[2]]
     if header != COLUMNS:
         raise ValueError(
             "CSV 헤더가 정본 스키마와 다릅니다.\n"
