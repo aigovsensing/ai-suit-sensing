@@ -90,6 +90,15 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 → 브라우저에서 **http://localhost:8007** 접속 → 첫 화면 **메인 현황판**(전체 현황)을 본 뒤 → **지도 대시보드**(`/map.html`)에서 히트맵/리니지/통계 세부 탐색.
 자세한 내용은 [dashboard/README.md](./dashboard/README.md).
 
+**운영 서버라면 (1회 설정)** — `analyzer` PR이 merge 될 때 갱신되는 정본 CSV를 자동 반영하려면, 서버 호스트에서 [`auto_pull.sh`](./dashboard/scripts/auto_pull.sh)를 cron에 등록합니다. 5분마다 `git pull`(fast-forward만)을 수행하며, backend가 요청 시마다 `data/*.csv`를 직접 읽으므로 재시작은 필요 없습니다.
+
+```bash
+# <repo>를 서버의 실제 저장소 경로로 바꿔 실행 (기존 crontab 유지 + 한 줄 추가)
+(crontab -l 2>/dev/null; echo "*/5 * * * * <repo>/dashboard/scripts/auto_pull.sh") | crontab -
+
+# 확인: crontab -l / 로그: tail ~/.cache/ai-suit-sensing/auto_pull.log
+```
+
 ### 2. `tracker` — 소송 센싱 실행
 
 로컬에서 한 번 수집해보거나, GitHub Actions로 매일 자동 실행할 수 있습니다.
