@@ -46,6 +46,10 @@ flowchart LR
 | [`analyzer-tba/`](./analyzer-tba) | 🧪 **분석·정리** | 이슈 리포트를 정본 CSV와 대조해 변경 제안 생성 (반영은 사람 승인 후) | 본 모노레포 신규 추가 |
 | [`dashboard/`](./dashboard) | 📊 **시각화** | 정리된 CSV를 지도 히트맵·리니지 그래프·통계로 시각화 | [aigovsensing/ai-suit-dashboard](https://github.com/aigovsensing/ai-suit-dashboard) |
 
+| [📡 `tracker` — 센싱 리포트](./tracker) | [🧪 `analyzer-tba` — 변경 제안 PR](./analyzer-tba) | [📊 `dashboard` — 시각화](./dashboard) |
+| :---: | :---: | :---: |
+| ![Tracker — GitHub Issue 소송 센싱 리포트](./tracker/img/github_issue.png) | ![Analyzer — 변경 제안 PR (Human-in-the-Loop 검토)](./analyzer-tba/img/analyzer_pr.png) | ![Dashboard — 소송 현황 인터랙티브 히트맵](./dashboard/img/dashboard.png) |
+
 ---
 
 ## 🤔 무엇을 먼저 써야 하나요?
@@ -292,10 +296,6 @@ analyzer-tba/
 - **UX**: 다국어(KO/EN), 반응형 디자인, 최신 데이터셋 자동 시각화를 지원합니다.
 
 **기술 스택**: FastAPI(Python 3.10+) + Uvicorn, MariaDB(또는 SQLite fallback), Vanilla JS / React 18 / Cytoscape.js, Gemini API, Docker / docker-compose
-
-| 메인 대시보드 & 히트맵 | 소송 관계 리니지 그래프 | 통계 분석 & AI 보고서 |
-| :---: | :---: | :---: |
-| ![Dashboard](./dashboard/img/dashboard.png) | ![Lineage](./dashboard/img/lineage.png) | ![Statistics](./dashboard/img/api_docs.png) |
 
 <details>
 <summary>디렉터리 구성</summary>

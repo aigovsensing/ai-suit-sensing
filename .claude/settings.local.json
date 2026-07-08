@@ -91,7 +91,16 @@
       "Bash(which google-chrome *)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:18007/login)",
       "Bash(identify /work/git-collect/ai-suit-sensing/dashboard/img/dashboard.png)",
-      "Bash(git commit -m 'docs\\(dashboard\\): 메인 대시보드 대표 이미지를 최신 개편 화면으로 교체 *)"
+      "Bash(git commit -m 'docs\\(dashboard\\): 메인 대시보드 대표 이미지를 최신 개편 화면으로 교체 *)",
+      "Bash(gh search *)",
+      "Bash(gh pr *)",
+      "Bash(python3 -m src.run analyze --extracted-json tests/fixtures/sample_extracted.json)",
+      "Bash(python3 -m src.run analyze --extracted-json tests/fixtures/sample_extracted.json --base-csv /tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/base_schema_fixed.csv)",
+      "Bash(google-chrome --headless --disable-gpu --no-sandbox --force-device-scale-factor=2 --window-size=1000,830 --screenshot=/tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.png file:///tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.html)",
+      "Bash(sed -i 's|</style>|::-webkit-scrollbar{display:none}\\\\n</style>|' /tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.html)",
+      "Bash(google-chrome --headless --disable-gpu --no-sandbox --force-device-scale-factor=2 --window-size=1000,1000 --screenshot=/tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr_full.png file:///tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.html)",
+      "Bash(rm -f analyzer-tba/proposals/changeset_20260708_1545.* analyzer-tba/proposals/last_run.json && git status --short && git diff --stat)",
+      "Bash(git commit -m 'docs\\(readme\\): 대표 스크린샷 테이블을 3개 컴포넌트\\(tracker/analyzer/dashboard\\) 구성으로 개편 *)"
     ]
   }
 }
