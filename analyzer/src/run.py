@@ -1,4 +1,4 @@
-"""Analyzer-TBA 엔트리포인트 (CLI).
+"""Analyzer 엔트리포인트 (CLI).
 
 서브커맨드:
   analyze   이슈 수집→추출→대조→제안 생성. (검토 방식 A) 후보 CSV + PR 요약도 생성.
@@ -28,7 +28,7 @@ except ImportError:  # python src/run.py 로 직접 실행 시
     from src import ingest, extract, matcher, changeset as csmod, apply as applymod, report
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-ROOT = os.path.dirname(HERE)  # analyzer-tba/
+ROOT = os.path.dirname(HERE)  # analyzer/
 
 
 def _now_stamp() -> str:
@@ -194,7 +194,7 @@ def cmd_apply(args) -> int:
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(prog="analyzer-tba")
+    ap = argparse.ArgumentParser(prog="analyzer")
     ap.add_argument("--config", default=os.path.join(ROOT, "config.yaml"))
     sub = ap.add_subparsers(dest="cmd", required=True)
 

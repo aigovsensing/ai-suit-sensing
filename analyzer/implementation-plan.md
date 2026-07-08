@@ -1,6 +1,6 @@
-# Analyzer-TBA 구현 계획서 (Implementation Plan)
+# Analyzer 구현 계획서 (Implementation Plan)
 
-> **Analyzer-TBA** = *Triage & Bridge Analyzer*
+> **Analyzer** = *Triage & Bridge Analyzer*
 > `tracker`(센싱)와 `dashboard`(시각화) 사이의 **수동 분석/정리 단계를 자동화**하되,
 > CSV 반영 전에 **사람이 검토(accept/reject)**하는 *Human-in-the-Loop* 분석기.
 
@@ -82,7 +82,7 @@ tracker (자동 센싱)
 ## 3. 아키텍처
 
 ```
-analyzer-tba/
+analyzer/
 ├── implementation-plan.md      # (본 문서)
 ├── README.md                   # 사용법
 ├── requirements.txt            # google-generativeai, pandas, rapidfuzz, PyYAML, requests

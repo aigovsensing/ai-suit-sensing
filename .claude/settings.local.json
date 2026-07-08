@@ -100,7 +100,12 @@
       "Bash(sed -i 's|</style>|::-webkit-scrollbar{display:none}\\\\n</style>|' /tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.html)",
       "Bash(google-chrome --headless --disable-gpu --no-sandbox --force-device-scale-factor=2 --window-size=1000,1000 --screenshot=/tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr_full.png file:///tmp/claude-1000/-work-git-collect-ai-suit-sensing/63e7ba56-cca4-4466-b311-d6df5ffe7bc1/scratchpad/analyzer_pr.html)",
       "Bash(rm -f analyzer-tba/proposals/changeset_20260708_1545.* analyzer-tba/proposals/last_run.json && git status --short && git diff --stat)",
-      "Bash(git commit -m 'docs\\(readme\\): 대표 스크린샷 테이블을 3개 컴포넌트\\(tracker/analyzer/dashboard\\) 구성으로 개편 *)"
+      "Bash(git commit -m 'docs\\(readme\\): 대표 스크린샷 테이블을 3개 컴포넌트\\(tracker/analyzer/dashboard\\) 구성으로 개편 *)",
+      "Bash(git -c http.proxy= -c https.proxy= ls-remote origin main)",
+      "Bash(awk -F: '{print $1}')",
+      "Bash(sed -i 's/Analyzer-TBA/Analyzer/g; s/analyzer-tba/analyzer/g; s/analyzer_tba/analyzer/g' README.md .github/workflows/analyzer.yml analyzer/README.md analyzer/implementation-plan.md analyzer/src/__init__.py analyzer/src/report.py analyzer/src/run.py analyzer/tests/test_csv_store.py analyzer/tests/test_pipeline.py .claude/settings.local.json)",
+      "Bash(python3 -m pytest tests/ -q)",
+      "Bash(rm -f proposals/changeset_20260708_1612.* proposals/last_run.json)"
     ]
   }
 }

@@ -1,6 +1,6 @@
 """matcher → changeset → apply 핵심 파이프라인 테스트 (네트워크/LLM 불필요).
 
-실행: analyzer-tba/ 에서  python -m tests.test_pipeline
+실행: analyzer/ 에서  python -m tests.test_pipeline
 """
 import copy
 import os
