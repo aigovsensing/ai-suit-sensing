@@ -84,7 +84,14 @@
       "Bash(git commit -m 'fix\\(dashboard\\): 증감률 왜곡 수정 + 국가별 비율 표기 + 소송 목록 게시판화 *)",
       "Bash(git -c http.proxy= -c https.proxy= pull --rebase origin main)",
       "Bash(python3 -m py_compile tracker/src/run.py tracker/src/github_issue.py)",
-      "Bash(git commit -m 'feat\\(tracker\\): GitHub 이슈 제목을 '\\\\''AI학습데이터 저작권 소송 모니터링'\\\\''으로 변경 *)"
+      "Bash(git commit -m 'feat\\(tracker\\): GitHub 이슈 제목을 '\\\\''AI학습데이터 저작권 소송 모니터링'\\\\''으로 변경 *)",
+      "Bash(git commit -m 'docs\\(readme\\): '\\\\''동작 흐름 \\(Operation Flow\\)'\\\\'' 섹션 추가 *)",
+      "Bash(find /tmp/claude-1000 /tmp -maxdepth 6 \\\\\\( -name \"*.png\" -o -name \"*.jpg\" -o -name \"*.jpeg\" \\\\\\) -mmin -30 2>/dev/null | head -20)",
+      "Bash(find ~/.claude /tmp/claude-1000/-work-git-collect-ai-suit-sensing -type f \\\\\\( -name \"*.png\" -o -name \"*.jpg\" -o -name \"*.webp\" \\\\\\) -mmin -60 2>/dev/null | head; ls -la /work/git-collect/ai-suit-sensing/.playwright-mcp/ 2>/dev/null)",
+      "Bash(which google-chrome *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:18007/login)",
+      "Bash(identify /work/git-collect/ai-suit-sensing/dashboard/img/dashboard.png)",
+      "Bash(git commit -m 'docs\\(dashboard\\): 메인 대시보드 대표 이미지를 최신 개편 화면으로 교체 *)"
     ]
   }
 }
