@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import time
 from typing import Dict, List
 
 from . import csv_store as cs
@@ -89,6 +90,36 @@ def _parse_json_array(text: str) -> List[Dict]:
         return []
 
 
+# 무료 티어 분당 5회(RPM) 제한 대비: 호출 간 최소 간격 + 429 지수 백오프.
+# 같은 키를 tracker(매시간 센싱)와 공유하므로 여유 있게 잡는다.
+_MIN_CALL_INTERVAL_SEC = 15.0
+_RETRY_DELAYS_SEC = [60, 120, 240]
+_last_call_at = 0.0
+
+
+def _is_rate_limit_error(exc: Exception) -> bool:
+    name = type(exc).__name__
+    msg = str(exc)
+    return name == "ResourceExhausted" or "429" in msg or "quota" in msg.lower()
+
+
+def _generate_throttled(gm, prompt: str):
+    """호출 간격을 지키며 생성 요청. 429 는 백오프 후 재시도, 그래도 실패하면 raise."""
+    global _last_call_at
+    for i, delay_on_fail in enumerate([*_RETRY_DELAYS_SEC, None]):
+        wait = _MIN_CALL_INTERVAL_SEC - (time.monotonic() - _last_call_at)
+        if wait > 0:
+            time.sleep(wait)
+        try:
+            _last_call_at = time.monotonic()
+            return gm.generate_content(prompt)
+        except Exception as e:  # noqa: BLE001
+            if not _is_rate_limit_error(e) or delay_on_fail is None:
+                raise
+            print(f"[!] Gemini 429(쿼터 초과) — {delay_on_fail}초 후 재시도 ({i + 1}/{len(_RETRY_DELAYS_SEC)})")
+            time.sleep(delay_on_fail)
+
+
 def extract_with_llm(text: str, model: str = "gemini-3-flash-preview") -> List[Dict[str, str]]:
     """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록."""
     api_key = os.environ.get("GEMINI_API_KEY", "")
@@ -102,7 +133,7 @@ def extract_with_llm(text: str, model: str = "gemini-3-flash-preview") -> List[D
     genai.configure(api_key=api_key)
     gm = genai.GenerativeModel(model)
     prompt = _PROMPT.format(keys="\n".join(f'- "{k}"' for k in EXTRACT_KEYS), text=text[:60000])
-    resp = gm.generate_content(prompt)
+    resp = _generate_throttled(gm, prompt)
     raw = _parse_json_array(getattr(resp, "text", "") or "")
     return [_validate(r) for r in raw if isinstance(r, dict)]
 
