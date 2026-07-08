@@ -116,7 +116,20 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 *   `aisuit_YYYYMMDD_HHMM.csv` 형식을 사용하며, 데이터 폴더에 저장 시 자동으로 인식됩니다.
 *   다중 피고(Multiple Defendants) 지원: 콤마(`,`)로 구분된 피고 데이터를 개별적으로 집계합니다.
 
-### 7.2 메모리 프로파일 (Memory Profile)
+### 7.2 운영 서버 자동 반영 (Auto Pull)
+`analyzer` PR이 merge 되면 GitHub `main`의 정본 CSV만 갱신되므로, 운영 서버 호스트에서 [`scripts/auto_pull.sh`](./scripts/auto_pull.sh)를 cron으로 돌려 자동 반영합니다. backend는 요청 시마다 `data/*.csv`를 직접 읽으므로 pull 후 재시작이 필요 없습니다.
+
+```bash
+# 운영 서버(192.168.10.2)에서 1회 설치 — 5분 주기 폴링
+(crontab -l 2>/dev/null; echo "*/5 * * * * /path/to/ai-suit-sensing/dashboard/scripts/auto_pull.sh") | crontab -
+
+# 동작 확인
+tail ~/.cache/ai-suit-sensing/auto_pull.log
+```
+
+스크립트는 `main` 브랜치가 아니거나 작업트리에 수동 변경이 있으면 건너뛰고, 프록시 순단 시 프록시 우회로 fetch를 재시도하며, fast-forward만 허용합니다(로컬 커밋과 분기 시 로그만 남기고 중단).
+
+### 7.3 메모리 프로파일 (Memory Profile)
 | 소송 건수 | 평균 메모리 사용량 | 최대 메모리 점유율 | 비고 |
 | :--- | :--- | :--- | :--- |
 | 1,000건 | ~70 MB | ~90 MB | 표준 운영 수준 |
