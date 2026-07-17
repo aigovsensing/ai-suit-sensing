@@ -329,6 +329,57 @@ dashboard/
 
 ---
 
+## 🤖 Gemini 무료 티어 & 폴백 전략
+
+세 컴포넌트(`tracker` / `analyzer-tba` / `dashboard`)는 모두 **동일한 계약**으로 Gemini를 호출합니다. 신용카드 없이 [Google AI Studio](https://aistudio.google.com/)에서 무료 발급한 API 키만으로 운영하는 것을 기본 전제로 하며, 무료 쿼터가 소진되어도 자동 폴백으로 파이프라인이 멈추지 않도록 설계했습니다.
+
+### API 키 설정
+
+무료 API 키를 발급받아 다음 위치에 등록합니다.
+
+- **GitHub Actions**: `Settings → Secrets and variables → Actions` 에 Secret `GEMINI_API_KEY` 등록
+- **로컬 실행**: 환경변수 `export GEMINI_API_KEY=...`
+
+키가 없으면 AI 기능(요약·추출·보고서)만 건너뛰고 나머지 파이프라인은 정상 동작합니다.
+
+### 모델 선택 & 폴백 체인
+
+기본 1차 모델은 `gemini-flash-latest`(최신 Flash로 자동 해석)입니다. 1차 모델이 **429(쿼터 소진)** 또는 **일시적 오류**로 실패하면, **품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5)** 순서로 자동 폴백합니다.
+
+```
+gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash → gemini-2.5-flash-lite
+       (품질 우선, 최신)  ─────────────────────────────────────────▶  (안정성 우선, 무료 쿼터 큼)
+```
+
+| 환경변수 | 역할 | 기본값 |
+|---|---|---|
+| `GEMINI_API_KEY` | 무료 API 키 (필수) | — |
+| `GEMINI_MODEL` | 1차 모델 재정의 | `gemini-flash-latest` |
+| `GEMINI_MODEL_FALLBACKS` | 폴백 체인 재정의 (쉼표 구분) | 위 4단계 체인 |
+
+> `GEMINI_MODEL` 로 지정한 1차 모델은 항상 체인 맨 앞에 놓이고 중복은 제거됩니다. GitHub Actions에서는 `GEMINI_MODEL` 을 **Variable**(Secret 아님)로 두면 편리합니다.
+
+### 재시도 & 쿼터 보호
+
+- **일시적 오류 자동 복구**: `429`·`503`·`502`·`500`·`504` 발생 시 각 모델에서 **지수 백오프**(2s→4s→8s, 모델당 최대 3회)로 재시도한 뒤, 소진되면 다음 폴백 모델로 넘어갑니다.
+- **투명한 실패 처리**: 모든 모델·재시도가 실패하면 조용히 죽지 않고, 최종 시도 모델과 오류 코드를 담은 경고를 리포트/응답에 남깁니다.
+
+### 무료 티어 쿼터 (참고)
+
+Google은 정확한 무료 RPD(일일 요청 수)를 더 이상 공개 문서에 명시하지 않으며, 각자의 AI Studio 대시보드에서만 확인됩니다. 경험적 관측치:
+
+| 모델 | 특징 | 무료 일일 쿼터(대략) |
+|---|---|---|
+| `gemini-3.5-flash` | 최신·고품질 | 작음 |
+| `gemini-2.5-flash` | 안정적 | ~250 RPD |
+| `gemini-2.5-flash-lite` | 무료 쿼터 가장 큼 | ~1,000 RPD |
+
+> 무료 티어 범위 내라면 비용은 **$0** 입니다. 쿼터가 크게 필요할 경우 `GEMINI_MODEL=gemini-2.5-flash-lite` 로 1차 모델을 바꾸는 것을 권장합니다.
+
+구현 위치: `tracker/src/gemini.py`(`get_gemini_fallback_models`), `analyzer-tba/src/extract.py`(`extract_with_llm`), `dashboard/backend/main.py`(`get_gemini_fallback_models`).
+
+---
+
 ## 🗂️ 저장소 구조
 
 ```

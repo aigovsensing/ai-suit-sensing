@@ -1,4 +1,5 @@
 import os
+import time
 import hmac
 import hashlib
 import pymysql
@@ -47,6 +48,37 @@ if api_key:
     logger.info("Gemini API configured.")
 else:
     logger.warning("GEMINI_API_KEY not found. Report generation will fail.")
+
+# 무료 티어 폴백 체인: 품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5) 순.
+# tracker/analyzer-tba 와 동일한 계약(GEMINI_MODEL / GEMINI_MODEL_FALLBACKS)을 따른다.
+DEFAULT_FALLBACK_CHAIN = [
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+
+
+def get_gemini_fallback_models():
+    """1차 모델(GEMINI_MODEL) 뒤에 폴백 체인을 붙여 중복 없이 순서를 보존한다."""
+    primary = os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+    raw = os.environ.get("GEMINI_MODEL_FALLBACKS", "")
+    fallbacks = [m.strip() for m in raw.split(",") if m.strip()] or DEFAULT_FALLBACK_CHAIN
+    ordered = []
+    for name in [primary, *fallbacks]:
+        if name not in ordered:
+            ordered.append(name)
+    return ordered
+
+
+def _is_transient_gemini_error(err) -> bool:
+    """429(쿼터 소진) 또는 일시적 서버 오류(500/502/503/504) 여부."""
+    e = str(err).lower()
+    return any(
+        s in e
+        for s in ("429", "resource_exhausted", "500", "502", "503", "504", "unavailable", "internal")
+    )
 
 app = FastAPI()
 
@@ -441,34 +473,47 @@ def generate_report(request: dict):
 - 별도의 대제목(## {month} 보고서 등)은 생략하고 바로 '1. Executive Summary'부터 시작하세요.
 """
 
-    try:
-        # Safety settings matching reference
-        safety_settings = [
-            {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
-            {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
-        ]
+    # Safety settings matching reference
+    safety_settings = [
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+    ]
 
-        model = genai.GenerativeModel(
-            model_name='gemini-flash-latest',
-            safety_settings=safety_settings
-        )
-        response = model.generate_content(prompt)
-        
-        if response.candidates and response.candidates[0].content.parts:
-            logger.info(f"Report generated successfully for {month} ({report_type})")
-            return {"report": response.text}
-        else:
-            logger.error("Gemini response blocked or no candidates. This might be due to content safety filters.")
-            return {"report": "### 보고서 생성 실패\n\nGemini AI의 응답이 차단되었습니다. 데이터의 민감도 설정을 확인하거나, 질문 내용을 검토해주세요."}
-            
-    except Exception as e:
-        logger.error(f"Gemini API Error: {str(e)}")
-        if not api_key:
-            logger.critical("CRITICAL: GEMINI_API_KEY is missing. Monthly report generation is disabled.")
-            raise HTTPException(status_code=500, detail="GEMINI_API_KEY가 설정되지 않았습니다. 깃허브 레포 설정 또는 서버 환경변수를 확인하세요.")
-        raise HTTPException(status_code=500, detail=f"Gemini API Error: {str(e)}")
+    # rate limit(429)·일시적 서버 오류(503 등)에 대비해 모델별 지수 백오프 재시도를 하고,
+    # 소진 시 폴백 체인(다음 모델)으로 넘어간다.
+    max_retries = 3
+    base_delay = 2.0  # seconds
+    last_error = None
+
+    for current_model in get_gemini_fallback_models():
+        for attempt in range(max_retries):
+            try:
+                model = genai.GenerativeModel(
+                    model_name=current_model,
+                    safety_settings=safety_settings,
+                )
+                response = model.generate_content(prompt)
+
+                if response.candidates and response.candidates[0].content.parts:
+                    logger.info(f"Report generated successfully for {month} ({report_type}) via {current_model}")
+                    return {"report": response.text}
+
+                logger.error("Gemini response blocked or no candidates. This might be due to content safety filters.")
+                return {"report": "### 보고서 생성 실패\n\nGemini AI의 응답이 차단되었습니다. 데이터의 민감도 설정을 확인하거나, 질문 내용을 검토해주세요."}
+
+            except Exception as e:  # noqa: BLE001 - 폴백/재시도 판단용
+                last_error = e
+                logger.warning(f"Gemini API Error (model={current_model}, attempt={attempt + 1}/{max_retries}): {e}")
+                if _is_transient_gemini_error(e) and attempt < max_retries - 1:
+                    time.sleep(base_delay * (2 ** attempt))
+                    continue
+                # 일시적이지 않거나 재시도 소진 → 다음 폴백 모델로
+                break
+
+    logger.error(f"Gemini API Error (모든 폴백 모델 실패): {last_error}")
+    raise HTTPException(status_code=500, detail=f"Gemini API Error: {last_error}")
 
 @app.post("/api/report/download")
 async def download_report(request: dict):

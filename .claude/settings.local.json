@@ -108,7 +108,16 @@
       "Bash(rm -f proposals/changeset_20260708_1612.* proposals/last_run.json)",
       "Bash(gh workflow *)",
       "Bash(gh run *)",
-      "Bash(echo \"exit=$?\")"
+      "Bash(echo \"exit=$?\")",
+      "Bash(python -m pytest tests/ -q -k \"extract or pipeline or roundtrip\")",
+      "Bash(git --no-pager log --oneline -3)",
+      "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('OK: settings.local.json'\\)\")",
+      "Bash(python -c \"import yaml; yaml.safe_load\\(open\\('analyzer/config.yaml'\\)\\); print\\('OK: config.yaml'\\)\")",
+      "Bash(python -c \"import ast; ast.parse\\(open\\('analyzer/src/extract.py',encoding='utf-8'\\).read\\(\\)\\); print\\('OK: extract.py syntax'\\)\")",
+      "Bash(GIT_EDITOR=true git rebase --continue)",
+      "Bash(git --no-pager log --oneline origin/main -5)",
+      "Bash(git --no-pager log --oneline -2)",
+      "Bash(python -c \"import json; json.load\\(open\\('.claude/settings.local.json'\\)\\); print\\('OK: settings.local.json 유효'\\)\")"
     ]
   }
 }

@@ -51,10 +51,12 @@
 # Docker Compose 실행
 docker-compose -f docker/docker-compose.yml up -d
 
-# API Key를 포함하여 실행 시
+# API Key를 포함하여 실행 시 (무료 발급: Google AI Studio)
 GEMINI_API_KEY="your_actual_api_key" docker-compose -f docker/docker-compose.yml up -d
 ```
 *   **접속 주소**: `http://localhost:8007`
+
+> 월간 보고서 생성은 무료 티어 폴백 체인을 사용합니다. 1차 모델이 429(쿼터 소진)/일시 오류로 실패하면 지수 백오프 재시도 후 다음 모델로 자동 폴백합니다. 1차 모델·폴백은 `GEMINI_MODEL` / `GEMINI_MODEL_FALLBACKS` 환경변수로 조정할 수 있습니다. 자세한 내용은 루트 [README의 「Gemini 무료 티어 & 폴백 전략」](../README.md#-gemini-무료-티어--폴백-전략) 참고.
 
 #### 🔐 접속 암호 (로그인)
 외부에 노출된 대시보드에 아무나 접속하지 못하도록 간이 로그인 게이트가 적용되어 있습니다.

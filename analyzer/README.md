@@ -22,9 +22,14 @@ ingest(이슈 수집) → extract(LLM 구조화) → match(기존 CSV 대조)
 ```bash
 cd analyzer
 pip install -r requirements.txt
-export GEMINI_API_KEY=...   # LLM 추출용
+export GEMINI_API_KEY=...   # LLM 추출용 (무료 발급: Google AI Studio)
 export GITHUB_TOKEN=...      # 이슈 수집용
+# (선택) 1차 모델/폴백 체인 재정의 — 미지정 시 gemini-flash-latest 기본 + 자동 폴백
+# export GEMINI_MODEL=gemini-2.5-flash
+# export GEMINI_MODEL_FALLBACKS="gemini-2.5-flash,gemini-2.5-flash-lite"
 ```
+
+> 무료 티어·폴백 체인·재시도 동작은 루트 [README의 「Gemini 무료 티어 & 폴백 전략」](../README.md#-gemini-무료-티어--폴백-전략)을 참고하세요. 1차 모델이 429(쿼터 소진)/일시 오류로 실패하면 자동으로 다음 모델로 폴백합니다.
 
 ## 사용법
 

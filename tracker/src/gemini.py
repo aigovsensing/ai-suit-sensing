@@ -5,11 +5,41 @@ from google import genai
 from google.genai import types
 from .utils import debug_log
 
+# 무료 티어 폴백 체인: 품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5) 순으로 내려간다.
+# 1차 모델이 429(쿼터 소진) 또는 사용 불가일 때 순차적으로 다음 모델로 폴백한다.
+DEFAULT_FALLBACK_CHAIN = [
+    "gemini-flash-latest",   # → 최신 Flash(현재 3.5)로 자동 해석
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",      # 무료 쿼터 큼(~250 RPD)
+    "gemini-2.5-flash-lite", # 무료 쿼터 가장 큼(~1,000 RPD)
+]
+
 def get_gemini_model_name() -> str:
     """
     환경 변수에서 사용할 Gemini 모델명을 가져옵니다. 기본값은 'gemini-flash-latest'입니다.
     """
     return os.environ.get("GEMINI_MODEL", "gemini-flash-latest")
+
+def get_gemini_fallback_models() -> List[str]:
+    """
+    순차적으로 시도할 후보 모델 리스트를 반환합니다.
+
+    - 1차 모델은 `GEMINI_MODEL`(기본 'gemini-flash-latest').
+    - 폴백 체인은 `GEMINI_MODEL_FALLBACKS`(쉼표 구분)로 재정의할 수 있으며,
+      미지정 시 DEFAULT_FALLBACK_CHAIN 을 사용합니다.
+    - 1차 모델을 맨 앞에 두고 중복을 제거해 순서를 보존합니다.
+    """
+    primary = get_gemini_model_name()
+
+    raw = os.environ.get("GEMINI_MODEL_FALLBACKS", "")
+    fallbacks = [m.strip() for m in raw.split(",") if m.strip()] or DEFAULT_FALLBACK_CHAIN
+
+    ordered: List[str] = []
+    for name in [primary, *fallbacks]:
+        if name not in ordered:
+            ordered.append(name)
+    return ordered
 
 def get_gemini_model_display_name() -> str:
     """
@@ -47,10 +77,8 @@ def get_gemini_summary(prompt: str) -> str:
     max_retries = 3
     base_delay = 2.0  # seconds
     
-    # 순차적으로 시도할 후보 모델 리스트
-    models_to_try = [model_name]
-    if "gemini-3.5" in model_name or "gemini-flash" in model_name:
-        models_to_try.append("gemini-2.5-flash")
+    # 순차적으로 시도할 후보 모델 리스트 (1차 → 폴백 체인)
+    models_to_try = get_gemini_fallback_models()
 
     last_error = None
     final_model = model_name

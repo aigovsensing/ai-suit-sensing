@@ -23,9 +23,13 @@ llm:
   enabled: true
   # 주의: 무료 티어 쿼터는 '프로젝트×모델별'로 집계됨. tracker(매시간)가
   # gemini-3-flash 계열을 쓰므로, analyzer는 쿼터 버킷이 분리되는
-  # gemini-2.5-flash 를 사용해 일일 쿼터 충돌을 피한다 (2026-07-08).
+  # gemini-2.5-flash 를 1차 모델로 써 일일 쿼터 충돌을 피한다 (2026-07-08).
+  # 환경변수 GEMINI_MODEL 이 있으면 그것이 우선한다.
   model: "gemini-2.5-flash"
   # API 키는 환경변수 GEMINI_API_KEY 로 주입
+  # 폴백 체인은 환경변수 GEMINI_MODEL_FALLBACKS(쉼표 구분)로 재정의 가능.
+  # 미지정 시 기본: gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite
+  #                → gemini-2.5-flash → gemini-2.5-flash-lite
 
 # tracker 의 사건 보강 규칙 재사용
 known_cases_path: "../tracker/data/known_cases.yml"

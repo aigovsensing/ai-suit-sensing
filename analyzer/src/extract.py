@@ -17,6 +17,27 @@ from typing import Dict, List
 
 from . import csv_store as cs
 
+# 무료 티어 폴백 체인: 품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5) 순으로 내려간다.
+# tracker/src/gemini.py 와 동일한 계약(GEMINI_MODEL / GEMINI_MODEL_FALLBACKS)을 따른다.
+DEFAULT_FALLBACK_CHAIN = [
+    "gemini-flash-latest",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+
+
+def _fallback_models(primary: str) -> List[str]:
+    """1차 모델 뒤에 폴백 체인을 붙여 중복 없이 순서를 보존한다."""
+    raw = os.environ.get("GEMINI_MODEL_FALLBACKS", "")
+    fallbacks = [m.strip() for m in raw.split(",") if m.strip()] or DEFAULT_FALLBACK_CHAIN
+    ordered: List[str] = []
+    for name in [primary, *fallbacks]:
+        if name not in ordered:
+            ordered.append(name)
+    return ordered
+
 # 미국 연방 도켓번호 패턴 (예: 5:26-cv-06206, 3:24-cv-05417)
 DOCKET_RE = re.compile(r"\b\d{1,2}:\d{2}-[a-z]{2}-\d{3,6}\b", re.IGNORECASE)
 
@@ -120,8 +141,13 @@ def _generate_throttled(gm, prompt: str):
             time.sleep(delay_on_fail)
 
 
-def extract_with_llm(text: str, model: str = "gemini-3-flash-preview") -> List[Dict[str, str]]:
-    """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록."""
+def extract_with_llm(text: str, model: str = "gemini-2.5-flash") -> List[Dict[str, str]]:
+    """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록.
+
+    같은 키를 tracker(매시간 센싱)와 공유하므로 호출 간 최소 간격을 지키고 429 는
+    긴 지수 백오프로 재시도한다(_generate_throttled). 한 모델의 재시도가 모두
+    소진되면 폴백 체인(GEMINI_MODEL_FALLBACKS)의 다음 모델로 넘어간다.
+    """
     api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return []
@@ -131,14 +157,24 @@ def extract_with_llm(text: str, model: str = "gemini-3-flash-preview") -> List[D
         return []
 
     genai.configure(api_key=api_key)
-    gm = genai.GenerativeModel(model)
     prompt = _PROMPT.format(keys="\n".join(f'- "{k}"' for k in EXTRACT_KEYS), text=text[:60000])
-    resp = _generate_throttled(gm, prompt)
-    raw = _parse_json_array(getattr(resp, "text", "") or "")
-    return [_validate(r) for r in raw if isinstance(r, dict)]
+
+    # 환경변수 GEMINI_MODEL 이 있으면 호출부가 넘긴 model 보다 우선한다.
+    primary = os.environ.get("GEMINI_MODEL") or model
+
+    for current_model in _fallback_models(primary):
+        try:
+            gm = genai.GenerativeModel(current_model)
+            resp = _generate_throttled(gm, prompt)
+            raw = _parse_json_array(getattr(resp, "text", "") or "")
+            return [_validate(r) for r in raw if isinstance(r, dict)]
+        except Exception:  # noqa: BLE001 - 폴백 판단용
+            # 429 재시도 소진 또는 그 외 오류 → 폴백 체인의 다음 모델로 넘어간다.
+            continue
+    return []
 
 
-def extract(text: str, *, llm_enabled: bool = True, model: str = "gemini-3-flash-preview") -> List[Dict[str, str]]:
+def extract(text: str, *, llm_enabled: bool = True, model: str = "gemini-flash-latest") -> List[Dict[str, str]]:
     """이슈 텍스트 → 검증된 소송 레코드 목록."""
     if llm_enabled:
         recs = extract_with_llm(text, model=model)
