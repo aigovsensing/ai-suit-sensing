@@ -45,10 +45,30 @@ jobs:
           python-version: "3.11"
 
       - name: Install build deps
-        run: python -m pip install --upgrade pip pandas
+        run: python -m pip install --upgrade pip pandas google-generativeai
+
+      # 사전 생성된 Gemini 월간 보고서를 실행 간에 보존(변경분만 재생성 → 쿼터 절약)
+      - name: Restore pre-generated reports cache
+        uses: actions/cache@v4
+        with:
+          path: docs/api/report
+          key: gemini-reports-${{ hashFiles('dashboard/data/**') }}
+          restore-keys: |
+            gemini-reports-
 
       - name: Build static site into docs/
         run: python dashboard/scripts/build_pages.py --out docs
+
+      # AI 월간 보고서 사전 생성. GEMINI_API_KEY 시크릿이 없으면 스크립트가 정상 no-op.
+      # 실패해도 배포는 계속되도록 continue-on-error.
+      - name: Pre-generate AI monthly reports (Gemini)
+        continue-on-error: true
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
+          GEMINI_MODEL_FALLBACKS: ${{ vars.GEMINI_MODEL_FALLBACKS }}
+          REPORT_MAX_MONTHS: ${{ vars.REPORT_MAX_MONTHS || '24' }}
+        run: python dashboard/scripts/generate_reports.py --out docs
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

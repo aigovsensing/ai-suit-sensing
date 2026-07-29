@@ -24,6 +24,7 @@
 | `GET /api/cases?file_name=<f>` | `api/cases/<f>.json` |
 | `GET /api/statistics?file_name=<f>` | `api/statistics/<f>.json` |
 | `GET /api/version` | `api/version.json` |
+| `POST /api/report/generate` | `api/report/<type>/<month>.json` (빌드 시 Gemini 사전 생성) |
 
 브라우저에서는 [`js/pages-shim.js`](./js/pages-shim.js) 가 `window.fetch` 를 감싸서
 `/api/*` 요청과 절대경로(`/img`, `/timeline` …) 요청을 위 정적 파일의 **상대경로**로
@@ -38,16 +39,34 @@
 | `lineage.html` | 소송 관계 리니지 그래프 | `frontend/lineage.html` |
 | `timeline/` | 소송/규제 타임라인 | `dashboard/timeline/` |
 
-## ✅ 정적 배포에서 되는 것 / ❌ 안 되는 것
+## 🤖 AI 월간 보고서 (Gemini) — 사전 생성 방식
+
+원래 이 기능은 서버가 실행 중에 Gemini API 를 호출합니다. 정적 사이트에는 실행 서버가
+없으므로, **빌드 시점(GitHub Actions)에 Gemini 로 보고서를 미리 생성**해 정적 파일로
+제공합니다. 런타임에는 백엔드 없이 그 파일을 받아 표시합니다.
+
+- 워크플로 [`pages.yml`](../.github/workflows/pages.yml) 이 저장소 시크릿
+  **`GEMINI_API_KEY`** (이미 `lawsuit-monitor` 에서 쓰던 것)로
+  [`dashboard/scripts/generate_reports.py`](../dashboard/scripts/generate_reports.py) 를 실행합니다.
+- **최신 데이터셋**의 각 유형(`filing_date`, `last_update`)에 대해 **데이터가 있는 최근 N개월**
+  (`REPORT_MAX_MONTHS`, 기본 24)을 생성 → `api/report/<type>/<month>.json`.
+- **캐시**: 입력(해당 월 데이터)이 바뀌지 않으면 재호출하지 않습니다(`manifest.json` + Actions 캐시).
+  즉 최초 1회만 비용이 크고, 이후에는 새/변경 월만 생성합니다.
+- 키가 없으면(포크 등) 스크립트는 조용히 건너뛰고, 프론트엔드는 안내 메시지를 표시합니다.
+- 프롬프트/폴백 로직은 백엔드 `backend/main.py` 와 동일합니다.
+
+**제약**: 데이터에 없는 월, 사전 생성 범위(최근 N개월) 밖의 월, 또는 최신이 아닌 데이터셋에
+대한 보고서는 정적 배포에 없을 수 있습니다. 그런 경우 임의 월 즉석 생성이 필요하면 백엔드를
+직접 실행하세요 (`dashboard/README.md` 4.1/4.2 참고).
+
+## ✅ 그 밖에 되는 것 / 보안 주의
 
 **됩니다** — 지도 히트맵·대륙별 줌인·다차원 필터링, 통계/시계열 차트, 리니지 그래프,
 타임라인, 데이터셋 드롭다운(과거 스냅샷 전환), KO/EN 전환, 매뉴얼 열람.
 
-**안 됩니다** — **AI 월간 보고서 생성(`/api/report/generate`)**. 이 기능만은 서버와
-Google Gemini API 키가 필요해 정적 호스팅에서 실행할 수 없습니다. 정적 배포에서는 해당
-버튼을 누르면 안내 메시지가 표시됩니다. 보고서가 필요하면 백엔드를 직접 실행하세요
-(`dashboard/README.md` 참고). 또한 간이 **로그인 게이트도 없습니다** — 정적 사이트는
-공개 배포이므로 GitHub Pages 자체를 비공개로 두거나 민감 데이터를 올리지 마세요.
+**보안** — 정적 사이트는 공개 배포이며 간이 **로그인 게이트가 없습니다**. 민감 데이터라면
+GitHub Pages 자체를 비공개로 두거나, 로컬/도커 백엔드 운영을 사용하세요. (`GEMINI_API_KEY`
+는 Actions 시크릿에만 있고, 생성된 보고서 텍스트만 정적으로 배포되므로 키는 노출되지 않습니다.)
 
 ---
 

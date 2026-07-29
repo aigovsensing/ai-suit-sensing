@@ -109,11 +109,16 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 *   **배포 주소**: `https://aigovsensing.github.io/ai-suit-sensing/`
 *   **빌드**: `python scripts/build_pages.py` → 레포 루트 `docs/` 생성
 *   **자동 배포**: `main` push 시 [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) 이 재빌드/배포
-*   자세한 활성화 방법·제약(정적에서는 **AI 월간 보고서 생성 불가**)은 [`docs/README.md`](../docs/README.md) 참고
+*   **AI 월간 보고서**: 빌드 시점에 GitHub Actions 가 `GEMINI_API_KEY` 시크릿으로
+    [`scripts/generate_reports.py`](./scripts/generate_reports.py) 를 실행해 최신 데이터셋의 최근
+    개월분을 **사전 생성**(`docs/api/report/<type>/<month>.json`) → 정적 배포에서도 열람 가능.
+    (프롬프트/폴백은 `backend/main.py` 와 동일. 데이터에 없거나 사전 생성 범위 밖 월은 제외)
+*   자세한 활성화 방법·제약은 [`docs/README.md`](../docs/README.md) 참고
 
 > [!NOTE]
 > 정적 배포는 공개 사이트이며 로그인 게이트가 없습니다. 민감 데이터라면 로컬/도커 백엔드
-> 운영(4.1, 4.2)을 사용하고 GitHub Pages 배포는 피하세요.
+> 운영(4.1, 4.2)을 사용하고 GitHub Pages 배포는 피하세요. `GEMINI_API_KEY` 는 Actions
+> 시크릿에만 존재하며, 배포물에는 생성된 보고서 텍스트만 포함되어 키는 노출되지 않습니다.
 
 ## 5. 사용 가이드 (How to Use)
 1.  **데이터셋 선택**: 헤더의 `DATASET` 드롭다운에서 파일을 선택합니다. (최신 파일 자동 선택)

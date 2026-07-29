@@ -9,7 +9,8 @@
  *  /api/cases?file_name=<f>         -> api/cases/<f>.json
  *  /api/statistics?file_name=<f>    -> api/statistics/<f>.json
  *  /api/version                     -> api/version.json
- *  /api/report/generate (POST)      -> 정적 안내 메시지(백엔드 필요 기능)
+ *  /api/report/generate (POST)      -> api/report/<type>/<month>.json (빌드 시 Gemini 사전생성)
+ *                                      없으면 안내 메시지
  *  /img/... , /timeline/... 등 절대경로 -> 상대경로(GitHub Pages 하위경로 대응)
  *
  * 모든 경로는 현재 페이지 기준 상대경로로 변환되므로, 사용자/조직 페이지(루트)
@@ -19,22 +20,25 @@
   "use strict";
   var origFetch = window.fetch.bind(window);
 
-  var STATIC_REPORT_NOTICE = [
-    "### 🛈 정적 배포 안내 (GitHub Pages)",
-    "",
-    "**AI 월간 보고서 생성**은 서버(백엔드)와 Google Gemini API 키가 필요한 기능이라,",
-    "백엔드가 없는 GitHub Pages 정적 배포에서는 실행할 수 없습니다.",
-    "",
-    "이 대시보드의 **지도·통계·리니지·타임라인·데이터 열람/필터링**은 모두 정상 동작합니다.",
-    "",
-    "월간 보고서가 필요하면 아래 중 하나로 백엔드를 실행하세요:",
-    "",
-    "```bash",
-    "GEMINI_API_KEY=\"<your_key>\" docker-compose -f dashboard/docker/docker-compose.yml up -d",
-    "# 또는",
-    "cd dashboard && uvicorn backend.main:app --port 8007",
-    "```",
-  ].join("\n");
+  function reportUnavailableNotice(month, type) {
+    return [
+      "### 🛈 이 달의 AI 보고서가 아직 없습니다",
+      "",
+      "선택하신 **" + (month || "해당 월") + "** (" + (type || "") + ") 보고서가 정적 사이트에",
+      "미리 생성돼 있지 않습니다.",
+      "",
+      "정적 배포(GitHub Pages)에서는 보고서를 **빌드 시점에 GitHub Actions 가 Gemini 로 미리 생성**해",
+      "정적 파일로 제공합니다. 최신 데이터셋의 최근 개월분만 사전 생성되므로, 데이터에 없는 월이거나",
+      "아직 빌드에 포함되지 않은 월은 표시되지 않습니다.",
+      "",
+      "**해결 방법**",
+      "- 데이터가 있는 최근 월을 선택해 보세요.",
+      "- 저장소 관리자라면 `main` 에 데이터를 push 하거나 Actions 에서 `deploy-dashboard-pages`",
+      "  워크플로를 다시 실행하면 최신 월 보고서가 생성됩니다 (`GEMINI_API_KEY` 시크릿 필요).",
+      "- 임의의 월을 즉석에서 생성하려면 백엔드를 직접 실행하세요:",
+      "  `cd dashboard && GEMINI_API_KEY=\"<key>\" uvicorn backend.main:app --port 8007`",
+    ].join("\n");
+  }
 
   function jsonResponse(obj, status) {
     return new Response(JSON.stringify(obj), {
@@ -91,13 +95,37 @@
     return null;
   }
 
+  var baseDir = window.location.pathname.replace(/[^/]*$/, "");
+
+  // 보고서 요청 → 사전 생성된 정적 파일(api/report/<type>/<month>.json) 서빙
+  function handleReport(init) {
+    var type = "", month = "";
+    try {
+      var body = init && init.body ? JSON.parse(init.body) : {};
+      type = body.type || "";
+      month = body.month || "";
+    } catch (e) { /* 무시 */ }
+
+    if (!type || !month) {
+      return Promise.resolve(jsonResponse({ report: reportUnavailableNotice(month, type) }, 200));
+    }
+    var target = baseDir + "api/report/" + encodeURIComponent(type) + "/" + encodeURIComponent(month) + ".json";
+    return origFetch(target)
+      .then(function (res) {
+        if (res.ok) return res; // {report: "..."} 형태의 정적 파일
+        return jsonResponse({ report: reportUnavailableNotice(month, type) }, 200);
+      })
+      .catch(function () {
+        return jsonResponse({ report: reportUnavailableNotice(month, type) }, 200);
+      });
+  }
+
   window.fetch = function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
-    var method = (init && init.method) || (input && input.method) || "GET";
 
-    // 보고서 생성(POST)은 정적 안내로 대체
+    // 보고서 생성(POST)은 사전 생성된 정적 보고서로 대체
     if (url.indexOf("/api/report/generate") !== -1) {
-      return Promise.resolve(jsonResponse({ report: STATIC_REPORT_NOTICE }, 200));
+      return handleReport(init);
     }
 
     if (typeof input === "string") {
