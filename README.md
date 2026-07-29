@@ -58,6 +58,7 @@ flowchart LR
 
 | 하고 싶은 것 | 시작할 컴포넌트 | 바로가기 |
 |---|---|---|
+| **설치 없이** 웹에서 바로 대시보드를 보고 싶다 | `dashboard` (GitHub Pages) | [🌐 aigovsensing.github.io/ai-suit-sensing](https://aigovsensing.github.io/ai-suit-sensing/) |
 | 수집된 소송 데이터를 **지도/그래프로 보고 싶다** | `dashboard` | [▶ 빠른 시작](#1-dashboard--대시보드-띄우기-가장-쉬움) |
 | 최신 소송을 **자동으로 수집·추적하고 싶다** | `tracker` | [▶ 빠른 시작](#2-tracker--소송-센싱-실행) |
 | 수집된 이슈를 **CSV로 정리·반영하고 싶다** | `analyzer` | [▶ 빠른 시작](#3-analyzer--이슈를-csv로-정리) |
@@ -75,6 +76,9 @@ cd ai-suit-sensing
 
 ### 1. `dashboard` — 대시보드 띄우기 (가장 쉬움)
 
+> **⚡ 설치가 싫다면?** 서버 없이 GitHub Pages 로 배포된 라이브 대시보드를 바로 열어보세요 →
+> **<https://aigovsensing.github.io/ai-suit-sensing/>** (방법 C 참고)
+
 저장소에 포함된 샘플 CSV로 즉시 시각화를 볼 수 있습니다.
 
 ```bash
@@ -89,6 +93,17 @@ uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 
 → 브라우저에서 **http://localhost:8007** 접속 → 첫 화면 **메인 현황판**(전체 현황)을 본 뒤 → **지도 대시보드**(`/map.html`)에서 히트맵/리니지/통계 세부 탐색.
 자세한 내용은 [dashboard/README.md](./dashboard/README.md).
+
+**방법 C) GitHub Pages (서버·설치 불필요)** — 개인 서버(Ubuntu)나 Docker 없이 **GitHub 인프라 + Actions**만으로 대시보드를 공개 호스팅합니다. 빌드 시점에 `data/*.csv`를 정적 JSON으로 미리 계산하고, **AI 월간 보고서(Gemini)도 Actions가 `GEMINI_API_KEY`로 사전 생성**하므로 백엔드 없이 열람/조작이 가능합니다.
+
+```bash
+# 로컬에서 정적 사이트 빌드 (레포 루트 docs/ 생성)
+pip install pandas
+python dashboard/scripts/build_pages.py
+```
+
+→ 저장소 **Settings → Pages → Source**를 **GitHub Actions**로 설정하면 `main` push 마다 [`.github/workflows/pages.yml`](./.github/workflows/pages.yml)가 자동 재빌드·배포합니다. 접속 주소는 **<https://aigovsensing.github.io/ai-suit-sensing/>**.
+활성화 방법·제약(로그인 게이트 없음, 정적 배포 특성)은 [docs/README.md](./docs/README.md) 참고.
 
 **운영 서버라면 (1회 설정)** — `analyzer` PR이 merge 될 때 갱신되는 정본 CSV를 자동 반영하려면, 서버 호스트에서 [`auto_pull.sh`](./dashboard/scripts/auto_pull.sh)를 cron에 등록합니다. 5분마다 `git pull`(fast-forward만)을 수행하며, backend가 요청 시마다 `data/*.csv`를 직접 읽으므로 재시작은 필요 없습니다.
 
@@ -303,10 +318,11 @@ analyzer/
 - **인터랙티브 소송 히트맵**: 대륙별 줌인과 피고·학습 데이터 분야(Theme)별 다차원 필터링을 제공합니다.
 - **리니지 그래프(Lineage)**: 원고·피고·데이터셋·AI 제품 간 관계를 시각화하고 특정 대상 포커싱 분석을 지원합니다.
 - **통계 & 시계열 추이**: 청구 내용·피고·판결 결과별 실시간 집계와 시계열 트렌드 차트를 제공합니다.
-- **Gemini 월간 보고서**: 소송 데이터 기반 법적 트렌드 보고서를 자동 생성합니다.
+- **Gemini 월간 보고서**: 소송 데이터 기반 법적 트렌드 보고서를 자동 생성합니다. 정적 배포에서는 빌드 시점에 Actions가 미리 생성해 제공합니다.
 - **UX**: 다국어(KO/EN), 반응형 디자인, 최신 데이터셋 자동 시각화를 지원합니다.
+- **두 가지 배포 방식**: ① 백엔드(FastAPI, `:8007`) 실행 — 로그인·임의 월 보고서 즉석 생성 등 전기능, ② **GitHub Pages 정적 배포** — 서버 없이 `docs/`를 빌드해 공개 호스팅([docs/README.md](./docs/README.md)).
 
-**기술 스택**: FastAPI(Python 3.10+) + Uvicorn, MariaDB(또는 SQLite fallback), Vanilla JS / React 18 / Cytoscape.js, Gemini API, Docker / docker-compose
+**기술 스택**: FastAPI(Python 3.10+) + Uvicorn, MariaDB(또는 SQLite fallback), Vanilla JS / React 18 / Cytoscape.js, Gemini API, Docker / docker-compose, GitHub Pages + Actions(정적 배포)
 
 <details>
 <summary>디렉터리 구성</summary>
@@ -387,9 +403,13 @@ ai-suit-sensing/
 ├── tracker/        # 소송 센싱 도구 (CourtListener/RECAP & News Extractor)
 ├── analyzer/   # TBA: 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
 ├── dashboard/      # 소송 현황 대시보드 (AI Litigation Dashboard)
+│   └── scripts/    #  ├ build_pages.py     : 정적 사이트 빌더 (docs/ 생성)
+│                   #  └ generate_reports.py: Gemini 월간 보고서 사전 생성
+├── docs/           # GitHub Pages 정적 배포 산출물 (aigovsensing.github.io/ai-suit-sensing)
 ├── .github/workflows/
 │   ├── lawsuit-monitor.yml   # tracker 자동 센싱 (스케줄)
-│   └── analyzer.yml      # analyzer 제안 → PR 생성 (수동/스케줄)
+│   ├── analyzer.yml      # analyzer 제안 → PR 생성 (수동/스케줄)
+│   └── pages.yml         # dashboard → GitHub Pages 빌드·배포 (main push)
 ├── LICENSE
 └── README.md
 ```
