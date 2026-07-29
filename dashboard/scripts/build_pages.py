@@ -317,7 +317,13 @@ PAGES_SHIM_JS = r"""/*
 
     // 절대경로 정적 자산(/img, /timeline, /css, /js, /assets, /manual ...) → 베이스 기준 상대
     if (path.charAt(0) === "/") {
-      // 이미 베이스 디렉토리로 시작하면 그대로, 아니면 루트 기준 → 베이스로 이동
+      // 이미 베이스 디렉토리 하위 경로면 그대로 사용한다. (상대경로 fetch 는
+      // new URL() 로 해석되면서 이미 baseDir 이 포함돼 있으므로, 여기서 baseDir
+      // 을 다시 붙이면 /<repo>/<repo>/... 로 중복돼 404 가 난다.)
+      if (baseDir !== "/" && path.indexOf(baseDir) === 0) {
+        return path;
+      }
+      // 그 외(루트 기준 절대경로, 예: /img/... /api/...)는 베이스로 이동
       var rel = path.replace(/^\//, "");
       return baseDir + rel;
     }
