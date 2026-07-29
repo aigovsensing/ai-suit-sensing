@@ -193,22 +193,38 @@ def inject_shim(html):
     return re.sub(r"(<script)", SHIM_TAG + r"\n\1", html, count=1, flags=re.IGNORECASE)
 
 
-def rewrite_nav_paths(text):
-    """절대경로 네비게이션을 GitHub Pages 하위경로에서도 동작하도록 상대경로로."""
+def rewrite_nav_paths(text, prefix=""):
+    """절대경로 네비게이션(fetch 아님 → 셰임이 못 잡음)을 GitHub Pages
+    하위경로에서도 동작하도록 상대경로로 치환한다.
+
+    prefix: 문서 루트까지의 상대 접두어. 루트 파일은 "", 하위 폴더(예: timeline/)는
+            "../" 처럼 넘겨 링크가 루트 기준으로 올바르게 향하도록 한다.
+    백엔드 라우트 대응: '/' 와 '/overview.html' = 정적 index.html,
+                      '/map.html'·'/lineage.html' 은 동일 이름의 정적 파일.
+    """
+    p = prefix
     replacements = [
-        # 로고/홈 링크
-        ('href="/"', 'href="index.html"'),
-        ("href='/'", "href='index.html'"),
-        ("location.href='/'", "location.href='index.html'"),
-        ('location.href="/"', 'location.href="index.html"'),
-        ("location.href = '/'", "location.href = 'index.html'"),
-        ('location.href = "/"', 'location.href = "index.html"'),
-        ("window.location.href = '/'", "window.location.href = 'index.html'"),
-        ('window.location.href = "/"', 'window.location.href = "index.html"'),
-        # 타임라인(절대 → 상대)
-        ("'/timeline/", "'timeline/"),
-        ('"/timeline/', '"timeline/'),
-        # 지도 라우트: 백엔드는 /map.html 로 서빙했지만 정적 파일도 map.html 이므로 그대로 OK
+        # 홈/로고 (백엔드 '/' = overview = 정적 index.html)
+        ('href="/"', 'href="%sindex.html"' % p),
+        ("href='/'", "href='%sindex.html'" % p),
+        ('href="/overview.html"', 'href="%sindex.html"' % p),
+        ("href='/overview.html'", "href='%sindex.html'" % p),
+        ("location.href='/'", "location.href='%sindex.html'" % p),
+        ('location.href="/"', 'location.href="%sindex.html"' % p),
+        ("location.href = '/'", "location.href = '%sindex.html'" % p),
+        ('location.href = "/"', 'location.href = "%sindex.html"' % p),
+        ("window.location.href = '/'", "window.location.href = '%sindex.html'" % p),
+        ('window.location.href = "/"', 'window.location.href = "%sindex.html"' % p),
+        # 페이지 라우트 (백엔드 절대경로 → 상대). 따옴표 양쪽 모두 커버.
+        ('="/map.html"', '="%smap.html"' % p),
+        ("='/map.html'", "='%smap.html'" % p),
+        ('="/lineage.html"', '="%slineage.html"' % p),
+        ("='/lineage.html'", "='%slineage.html'" % p),
+        ('="/overview.html"', '="%sindex.html"' % p),
+        ("='/overview.html'", "='%sindex.html'" % p),
+        # 타임라인(절대 → 상대) — href/location/window.open 등 따옴표 앞선 형태 모두 커버
+        ('"/timeline/', '"%stimeline/' % p),
+        ("'/timeline/", "'%stimeline/" % p),
     ]
     for a, b in replacements:
         text = text.replace(a, b)
@@ -426,14 +442,19 @@ def main():
     with open(os.path.join(docs, "js", "pages-shim.js"), "w", encoding="utf-8") as f:
         f.write(PAGES_SHIM_JS)
 
-    # timeline HTML 도 절대경로 치환(내부 링크 대비)
+    # timeline HTML 도 절대경로 치환(내부 링크 대비).
+    # timeline/ 은 문서 루트보다 한 단계 깊으므로 링크는 "../" 접두어로 루트를 가리켜야 한다.
+    # (예: href="/map.html" → "../map.html") 깊이에 맞춰 접두어를 계산한다.
     for root, _, filenames in os.walk(os.path.join(docs, "timeline")):
+        rel_depth = 0 if os.path.abspath(root) == os.path.abspath(docs) else \
+            os.path.relpath(root, docs).count(os.sep) + 1
+        prefix = "../" * rel_depth
         for fn in filenames:
             if fn.endswith(".html"):
                 fp = os.path.join(root, fn)
                 with open(fp, encoding="utf-8") as f:
                     txt = f.read()
-                new = rewrite_nav_paths(txt)
+                new = rewrite_nav_paths(txt, prefix)
                 if new != txt:
                     with open(fp, "w", encoding="utf-8") as f:
                         f.write(new)
