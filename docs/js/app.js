@@ -1189,9 +1189,12 @@ async function initApp() {
         // Refresh UI components that use currentLang
         updateToggleBtnText();
         if (allCases && allCases.length > 0) {
-            updateStatusFilters(allCases);
+            // 상태 필터 드롭다운 라벨/건수를 새 언어로 다시 렌더한다.
+            // (함수명은 updateStatusFilterCounts 이며, 현재 지역 뷰(country-select)를 인자로 받는다.)
+            const countrySelect = document.getElementById('country-select');
+            updateStatusFilterCounts(allCases, countrySelect ? countrySelect.value : 'WORLD');
         }
-        
+
         refreshVisualization();
     };
 
