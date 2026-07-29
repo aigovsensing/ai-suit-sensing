@@ -1,0 +1,67 @@
+name: deploy-dashboard-pages
+
+# AI Litigation Dashboard 를 GitHub Pages 로 빌드/배포한다.
+# 백엔드(FastAPI) 없이도 동작하도록, 빌드 시점에 data/*.csv 를 정적 JSON 으로
+# 미리 계산(pre-compute)해 docs/ 에 담고 그 결과물을 Pages 아티팩트로 배포한다.
+#
+# 배포 URL: https://aigovsensing.github.io/ai-suit-sensing/
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboard/frontend/**"
+      - "dashboard/data/**"
+      - "dashboard/img/**"
+      - "dashboard/timeline/**"
+      - "dashboard/collector/**"
+      - "dashboard/scripts/build_pages.py"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch: {}
+
+# Pages 배포에 필요한 최소 권한
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 동시 배포 방지(진행 중 배포는 유지, 대기열은 최신만)
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # /api/version 의 git 태그/커밋 정보를 위해 전체 히스토리
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install build deps
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Build static site into docs/
+        run: python dashboard/scripts/build_pages.py --out docs
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

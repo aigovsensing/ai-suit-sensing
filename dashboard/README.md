@@ -101,6 +101,20 @@ pip install -r requirements.txt
 uvicorn backend.main:app --host 0.0.0.0 --port 8007 --reload
 ```
 
+### 4.3 GitHub Pages 정적 배포 (서버 불필요)
+개인 서버를 운영하지 않고 **GitHub 인프라 + GitHub Actions** 만으로 대시보드를 공개하려면
+정적 배포를 사용하세요. 빌드 시점에 `data/*.csv` 를 정적 JSON 으로 미리 계산해 백엔드 없이도
+지도/통계/리니지/타임라인을 열람·조작할 수 있습니다.
+
+*   **배포 주소**: `https://aigovsensing.github.io/ai-suit-sensing/`
+*   **빌드**: `python scripts/build_pages.py` → 레포 루트 `docs/` 생성
+*   **자동 배포**: `main` push 시 [`.github/workflows/pages.yml`](../.github/workflows/pages.yml) 이 재빌드/배포
+*   자세한 활성화 방법·제약(정적에서는 **AI 월간 보고서 생성 불가**)은 [`docs/README.md`](../docs/README.md) 참고
+
+> [!NOTE]
+> 정적 배포는 공개 사이트이며 로그인 게이트가 없습니다. 민감 데이터라면 로컬/도커 백엔드
+> 운영(4.1, 4.2)을 사용하고 GitHub Pages 배포는 피하세요.
+
 ## 5. 사용 가이드 (How to Use)
 1.  **데이터셋 선택**: 헤더의 `DATASET` 드롭다운에서 파일을 선택합니다. (최신 파일 자동 선택)
 2.  **대륙별 상세 분석**: 우측 하단의 `대륙별줌인` 메뉴를 통해 특정 지역으로 즉시 이동합니다.
