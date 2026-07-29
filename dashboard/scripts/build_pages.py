@@ -276,21 +276,28 @@ PAGES_SHIM_JS = r"""/*
     });
   }
 
-  // 절대경로/‐API 경로를 정적 파일 상대경로로 변환. null 반환 시 원본 그대로 사용.
+  // 루트-절대경로(/로 시작)만 정적 파일 상대경로로 변환한다. null 반환 시 원본 그대로 사용.
+  //
+  // 중요: 이미 올바른 "상대경로"(예: manual/user_guide.md)는 절대 건드리지 않는다.
+  //   브라우저가 현재 페이지 기준으로 알아서 해석하며(→ /<repo>/manual/...),
+  //   여기서 다시 베이스를 붙이면 /<repo>/<repo>/manual/... 처럼 이중 접두가 되어 404 난다.
+  //   그래서 raw 문자열이 단일 '/'로 시작할 때만(=루트-절대) 재배치한다.
   function rewrite(rawUrl) {
+    if (typeof rawUrl !== "string") return null;
+    // 외부 URL(스킴 포함 http:, //host), 상대경로(manual/…, ./, ../)는 그대로 둔다.
+    if (rawUrl.charAt(0) !== "/" || rawUrl.charAt(1) === "/") return null;
+
+    // 페이지가 위치한 디렉토리(배포 베이스). 예: /ai-suit-sensing/map.html -> /ai-suit-sensing/
+    var baseDir = window.location.pathname.replace(/[^/]*$/, "");
+
     var path, search;
     try {
-      var u = new URL(rawUrl, window.location.href);
-      // 외부 오리진(CDN 등)은 건드리지 않는다.
-      if (u.origin !== window.location.origin) return null;
-      path = u.pathname;
+      var u = new URL(rawUrl, window.location.origin);
+      path = u.pathname;         // 예: /api/cases
       search = u.searchParams;
     } catch (e) {
       return null;
     }
-
-    // 페이지가 위치한 디렉토리(배포 베이스). 예: /ai-suit-sensing/index.html -> /ai-suit-sensing/
-    var baseDir = window.location.pathname.replace(/[^/]*$/, "");
 
     function fileParam() {
       var f = search.get("file_name");
@@ -298,16 +305,14 @@ PAGES_SHIM_JS = r"""/*
     }
 
     // /api/* 매핑
-    var apiIdx = path.indexOf("/api/");
-    if (apiIdx !== -1) {
-      var apiPath = path.slice(apiIdx); // "/api/..."
-      if (apiPath.indexOf("/api/files") === 0) return baseDir + "api/files.json";
-      if (apiPath.indexOf("/api/version") === 0) return baseDir + "api/version.json";
-      if (apiPath.indexOf("/api/cases") === 0) {
+    if (path.indexOf("/api/") === 0) {
+      if (path.indexOf("/api/files") === 0) return baseDir + "api/files.json";
+      if (path.indexOf("/api/version") === 0) return baseDir + "api/version.json";
+      if (path.indexOf("/api/cases") === 0) {
         var cf = fileParam();
         return baseDir + (cf ? "api/cases/" + cf + ".json" : "api/cases.json");
       }
-      if (apiPath.indexOf("/api/statistics") === 0) {
+      if (path.indexOf("/api/statistics") === 0) {
         var sf = fileParam();
         return baseDir + (sf ? "api/statistics/" + sf + ".json" : "api/statistics.json");
       }
@@ -315,13 +320,8 @@ PAGES_SHIM_JS = r"""/*
       return null;
     }
 
-    // 절대경로 정적 자산(/img, /timeline, /css, /js, /assets, /manual ...) → 베이스 기준 상대
-    if (path.charAt(0) === "/") {
-      // 이미 베이스 디렉토리로 시작하면 그대로, 아니면 루트 기준 → 베이스로 이동
-      var rel = path.replace(/^\//, "");
-      return baseDir + rel;
-    }
-    return null;
+    // 기타 루트-절대 정적 자산(/img, /timeline, /css, /js, /assets, /manual ...) → 베이스 기준 상대
+    return baseDir + path.replace(/^\//, "") + (u.search || "");
   }
 
   var baseDir = window.location.pathname.replace(/[^/]*$/, "");
