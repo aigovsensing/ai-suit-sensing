@@ -134,6 +134,15 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
 
                     daily_summary = generate_daily_report_from_data(u_news, u_cases, report_date=report_date)
                     if daily_summary:
+                        # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
+                        try:
+                            from .news_digest import build_daily_news_section
+                            news_section = build_daily_news_section(report_date=report_date)
+                            if news_section:
+                                daily_summary = f"{daily_summary}\n\n---\n\n{news_section}"
+                        except Exception as news_err:
+                            import sys
+                            print(f"[ERROR] 당일 뉴스 소식 생성 중 예외 발생: {news_err}", file=sys.stderr)
                         create_comment(owner, repo, token, num, daily_summary)
                         # 이메일 발송
                         try:

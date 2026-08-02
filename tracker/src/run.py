@@ -24,6 +24,7 @@ from .queries import COURTLISTENER_QUERIES
 from .trend import generate_trend_summary
 from .gemini import get_gemini_model_display_name
 from .email_sender import send_email_report, get_subject_for_report
+from .news_digest import build_daily_news_section
 
 def main() -> None:
     # 0) 환경 변수 로드
@@ -211,6 +212,10 @@ def main() -> None:
                 debug_log(f"Gemini 동향 요약 기능 활성화 (설정 기간: {trend_days}일)")
                 trend_summary = generate_trend_summary(lawsuits, cl_cases, trend_days, report_date=now_kst.strftime('%Y-%m-%d'))
                 if trend_summary:
+                    # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
+                    news_section = build_daily_news_section(report_date=now_kst.strftime('%Y-%m-%d'))
+                    if news_section:
+                        trend_summary = f"{trend_summary}\n\n---\n\n{news_section}"
                     create_comment(owner, repo, gh_token, issue_no, trend_summary)
                     debug_log(f"Issue #{issue_no} Gemini 동향 요약 댓글 업로드 완료")
                     # 이메일 발송
@@ -268,6 +273,10 @@ def main() -> None:
                     u_news, u_cases, report_date=now_kst.strftime('%Y-%m-%d')
                 )
                 if daily_summary:
+                    # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
+                    news_section = build_daily_news_section(report_date=now_kst.strftime('%Y-%m-%d'))
+                    if news_section:
+                        daily_summary = f"{daily_summary}\n\n---\n\n{news_section}"
                     create_comment(owner, repo, gh_token, issue_no, daily_summary)
                     debug_log(f"Issue #{issue_no} 석간뉴스(당일 저녁) 댓글 업로드 완료")
                     try:
