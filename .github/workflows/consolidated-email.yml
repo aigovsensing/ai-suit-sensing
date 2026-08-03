@@ -51,8 +51,11 @@ jobs:
           ISSUE_LABEL: "ai-lawsuit-monitor"
           # 디버그 모드(0/1). Actions -> Variables에 DEBUG=1 설정 시 활성화
           DEBUG: ${{ vars.DEBUG }}
-          # 이메일 전송 활성화 (1: 활성화, 0: 비활성화)
+          # 이메일 전송 마스터 스위치 (1: 활성화, 0: 비활성화)
           ENABLE_EMAIL_SENDER: ${{ vars.ENABLE_EMAIL_SENDER || '0' }}
+          # 📑 당일 소송건들 통합 정리 리포트 타입별 발송 스위치
+          # (기본 '1'=활성, '0'으로 설정 시 통합 정리 이메일만 발송 중단)
+          ENABLE_EMAIL_CONSOLIDATED: ${{ vars.ENABLE_EMAIL_CONSOLIDATED || '1' }}
           # 이메일 발송용 SMTP 앱 비밀번호
           SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
         run: |

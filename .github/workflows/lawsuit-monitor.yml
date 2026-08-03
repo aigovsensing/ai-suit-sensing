@@ -58,8 +58,13 @@ jobs:
           GEMINI_DAILY_REPORT_IMAGEGEN: ${{ vars.GEMINI_DAILY_REPORT_IMAGEGEN || secrets.GEMINI_DAILY_REPORT_IMAGEGEN }}
           # 디버그 모드(0/1). Actions -> Variables에 DEBUG=1 설정 시 활성화
           DEBUG: ${{ vars.DEBUG }}
-          # 이메일 전송 활성화 (1: 활성화, 0: 비활성화)
+          # 이메일 전송 마스터 스위치 (1: 활성화, 0: 비활성화)
           ENABLE_EMAIL_SENDER: ${{ vars.ENABLE_EMAIL_SENDER || '0' }}
+          # 타입별 발송 스위치 (기본 '1'=활성, '0'으로 설정 시 해당 타입만 발송 중단)
+          # 🗓️ 조간뉴스
+          ENABLE_EMAIL_MORNING: ${{ vars.ENABLE_EMAIL_MORNING || '1' }}
+          # 🧠 석간뉴스
+          ENABLE_EMAIL_EVENING: ${{ vars.ENABLE_EMAIL_EVENING || '1' }}
           # 석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23). 미설정 시 코드 기본값 21시
           EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR }}
           # '당일 뉴스 소식' 섹션의 구글 뉴스 검색 기간(일). 미설정 시 코드 기본값 2일

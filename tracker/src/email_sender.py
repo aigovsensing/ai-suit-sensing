@@ -234,16 +234,48 @@ def get_subject_for_report(report_body: str, fallback_type: str, lookback_days: 
     return f"[AI 학습데이터 소송] {today_kst} 석간 | 소송 브리핑 (최근 1일간)"
 
 
-def send_email_report(subject: str, content: str) -> None:
+# 리포트 타입별 발송 여부를 제어하는 환경변수 이름
+# (마스터 스위치 ENABLE_EMAIL_SENDER=1 이 켜져 있을 때만 의미가 있으며,
+#  각 값은 기본 활성('1')이고 명시적으로 '0'일 때만 해당 타입을 비활성화한다)
+_REPORT_TYPE_ENV = {
+    "morning":      "ENABLE_EMAIL_MORNING",       # 🗓️ 조간뉴스
+    "evening":      "ENABLE_EMAIL_EVENING",       # 🧠 석간뉴스
+    "consolidated": "ENABLE_EMAIL_CONSOLIDATED",  # 📑 당일 소송건들 통합 정리 리포트
+}
+
+
+def _is_report_type_enabled(report_type: str | None) -> bool:
+    """리포트 타입별 발송 스위치를 확인합니다. (미지정/미설정 시 기본 활성)"""
+    if not report_type:
+        return True
+    env_key = _REPORT_TYPE_ENV.get(report_type)
+    if not env_key:
+        return True
+    # 기본 '1'(활성). GitHub Actions에서 Variable 미설정 시 ""가 들어와도 활성으로 간주.
+    # 명시적으로 '0'을 설정한 경우에만 비활성화한다.
+    return os.environ.get(env_key, "1") != "0"
+
+
+def send_email_report(subject: str, content: str, report_type: str | None = None) -> None:
     """
     Gmail SMTP를 사용하여 email.json에 등록된 설정 및 수신자들로 이메일을 발송합니다.
     - Markdown → HTML 변환 후 multipart/alternative 형식으로 발송
     - plain text 폴백 포함 (HTML 미지원 클라이언트 대응)
     - [FIX] 수신자 전체를 단일 sendmail()로 발송하여 중복 수신 방지
+
+    report_type: "morning" | "evening" | "consolidated" (선택).
+        지정 시 해당 타입 전용 스위치(_REPORT_TYPE_ENV)로 발송 여부를 추가 제어한다.
+        마스터 스위치(ENABLE_EMAIL_SENDER=1)가 켜져 있어야 하며, 타입 스위치는
+        기본 활성이고 값이 '0'일 때만 해당 타입 발송을 건너뛴다.
     """
     enable_sender = os.environ.get("ENABLE_EMAIL_SENDER") == "1"
     if not enable_sender:
         debug_log("이메일 전송 기능이 비활성화 상태입니다. (ENABLE_EMAIL_SENDER != 1)")
+        return
+
+    if not _is_report_type_enabled(report_type):
+        env_key = _REPORT_TYPE_ENV.get(report_type or "", "")
+        debug_log(f"'{report_type}' 타입 이메일 전송이 비활성화 상태입니다. ({env_key}=0)")
         return
 
     # 설정 파일(email.json) 정보 읽기

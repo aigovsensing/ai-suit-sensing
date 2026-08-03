@@ -222,7 +222,7 @@ def main() -> None:
                     # 이메일 발송
                     try:
                         email_subject = get_subject_for_report(trend_summary, "morning", trend_days)
-                        send_email_report(email_subject, trend_summary)
+                        send_email_report(email_subject, trend_summary, report_type="morning")
                     except Exception as email_err:
                         print(f"[ERROR] 조간뉴스 이메일 발송 중 예외 발생: {email_err}")
         except Exception as e:
@@ -282,7 +282,7 @@ def main() -> None:
                     debug_log(f"Issue #{issue_no} 석간뉴스(당일 저녁) 댓글 업로드 완료")
                     try:
                         email_subject = get_subject_for_report(daily_summary, "evening")
-                        send_email_report(email_subject, daily_summary)
+                        send_email_report(email_subject, daily_summary, report_type="evening")
                     except Exception as email_err:
                         print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}")
             else:
@@ -448,7 +448,7 @@ def send_consolidated_email() -> None:
 
     subject = f"[AI 학습데이터 소송] {now_kst.strftime('%Y-%m-%d')} 당일 소송건들 통합 정리 자료"
     try:
-        send_email_report(subject, report)
+        send_email_report(subject, report, report_type="consolidated")
         debug_log(f"Issue #{issue_no} 당일 소송건들 통합 정리 이메일 발송 완료")
     except Exception as email_err:
         print(f"[ERROR] 통합 정리 이메일 발송 중 예외 발생: {email_err}")

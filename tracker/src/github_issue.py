@@ -147,7 +147,7 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
                         # 이메일 발송
                         try:
                             email_subject = get_subject_for_report(daily_summary, "evening")
-                            send_email_report(email_subject, daily_summary)
+                            send_email_report(email_subject, daily_summary, report_type="evening")
                         except Exception as email_err:
                             import sys
                             print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}", file=sys.stderr)

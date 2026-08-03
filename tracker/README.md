@@ -62,8 +62,11 @@ AI 모델 학습을 위한 데이터 무단 사용 및 관련 저작권 소송�
 | `ISSUE_TITLE_BASE` | **Variable** | `AI 소송 Radar` | 생성될 이슈의 기본 제목 |
 | `PREVIOUS_ITEM_DEDUP_DAYS` | **Variable** | (공백) | **설정 시 이전 날짜 이슈와 중복 체크 수행.** `3` 설정 시 설정된 일수(예: 3일) 내의 이슈 댓글들을 확인하여 중복된 소송/뉴스는 리포트에서 제외합니다. |
 | `DEBUG` | **Variable** | `0` | 1 설정 시 상세 디버그 로그 출력 |
-| `ENABLE_EMAIL_SENDER` | **Variable** | `0` | **1 설정 시 이메일 전송 기능 활성화.** 0 설정(디폴트) 시 비활성화됩니다. |
-| `EVENING_REPORT_HOUR` | **Variable** | `21` | **석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23).** 실행 시각이 이 값 이상이면 당일 이슈에 석간뉴스를 발행합니다(하루 1회, 중복 방지). 예: `21` → 저녁 9시 이후 실행부터 발행. 해당 시각대에 예약 실행이 있어야 발행되며, 실패 시 익일 이슈 종료 시점에 안전망으로 생성됩니다. |
+| `ENABLE_EMAIL_SENDER` | **Variable** | `0` | **이메일 전송 마스터 스위치. 1 설정 시 활성화.** 0 설정(디폴트) 시 모든 이메일이 비활성화됩니다. 아래 타입별 스위치는 이 값이 `1`일 때만 의미가 있습니다. |
+| `ENABLE_EMAIL_MORNING` | **Variable** | `1` | **🗓️ 조간뉴스 이메일 발송 여부.** 기본 활성(`1`). `0` 설정 시 조간뉴스 이메일만 발송을 중단합니다(이슈 댓글 발행은 유지). |
+| `ENABLE_EMAIL_EVENING` | **Variable** | `1` | **🧠 석간뉴스 이메일 발송 여부.** 기본 활성(`1`). `0` 설정 시 석간뉴스 이메일만 발송을 중단합니다(이슈 댓글 발행은 유지). |
+| `ENABLE_EMAIL_CONSOLIDATED` | **Variable** | `1` | **📑 당일 소송건들 통합 정리 리포트 이메일 발송 여부.** 기본 활성(`1`). `0` 설정 시 통합 정리 이메일만 발송을 중단합니다. 석간 발송 30분 뒤(KST 21:30) 별도 워크플로([`consolidated-email.yml`](../.github/workflows/consolidated-email.yml))로 발송됩니다. |
+| `EVENING_REPORT_HOUR` | **Variable** | `21` | **석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23).** 실행 시각이 이 값 이상이면 당일 이슈에 석간뉴스를 발행합니다(하루 1회, 중복 방지). 예: `21` → 저녁 9시 이후 실행부터 발행. 해당 시각대에 예약 실행이 있어야 발행되며, 실패 시 익일 이슈 종료 시점에 안전망으로 생성됩니다. **주의:** 이 값을 변경하면 통합 정리 이메일 워크플로(`consolidated-email.yml`)의 cron(석간 +30분)도 함께 조정해야 합니다. |
 | `DAILY_NEWS_LOOKBACK_DAYS` | **Variable** | `2` | **조간/석간 뉴스에 함께 실리는 "📰 당일 뉴스 소식" 섹션의 구글 뉴스 검색 기간(일).** AI를 쓰지 않고 구글 뉴스 검색(Google Alert 유사)으로 최근 N일간 'AI 학습데이터 저작권 소송' 기사를 수집해, **(국내)/(해외) 2개 구분**으로 나눈 뒤 **중복 보도(유사 제목) 건수가 많은 순(=화제성)** 상위 5개를 노출하고 나머지는 "더보기 (N개)"로 접어 보여줍니다. |
 
 
@@ -112,7 +115,15 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 
 ## 📩 이메일 전송 (Gmail SMTP 연동)
 
-본 프로젝트는 중개 서비스(FormSubmit.co) 없이 직접 **Gmail SMTP(Simple Mail Transfer Protocol)** 서버를 통해 조간뉴스 및 석간뉴스 리포트를 이메일로 안전하게 전송합니다.
+본 프로젝트는 중개 서비스(FormSubmit.co) 없이 직접 **Gmail SMTP(Simple Mail Transfer Protocol)** 서버를 통해 아래 **3종의 리포트**를 각각 독립된 제목으로 이메일 발송합니다.
+
+| # | 이메일 제목(예시) | 발송 시점 | 발송 스위치 |
+| --- | --- | --- | --- |
+| 🗓️ 조간뉴스 | `[AI 학습데이터 소송] YYYY-MM-DD 조간 \| 소송 동향 (최근 N일간)` | 당일 첫 실행 | `ENABLE_EMAIL_MORNING` |
+| 🧠 석간뉴스 | `[AI 학습데이터 소송] YYYY-MM-DD 석간 \| 소송 브리핑 (최근 1일간)` | KST `EVENING_REPORT_HOUR`시(기본 21시) 이후 | `ENABLE_EMAIL_EVENING` |
+| 📑 통합 정리 | `[AI 학습데이터 소송] YYYY-MM-DD 당일 소송건들 통합 정리 자료` | 석간 30분 뒤(KST 21:30) | `ENABLE_EMAIL_CONSOLIDATED` |
+
+> 발송 제어는 **2단계**입니다. 먼저 마스터 스위치 `ENABLE_EMAIL_SENDER=1`이 켜져 있어야 하며, 그 다음 각 타입 스위치(기본 활성, `0`일 때만 중단)로 개별 발송 여부를 조정합니다. 예를 들어 `ENABLE_EMAIL_SENDER=1`·`ENABLE_EMAIL_MORNING=0`이면 석간·통합 정리만 발송되고 조간은 발송되지 않습니다.
 
 ### 1️⃣ Secrets 등록 (Settings → Secrets and variables → Actions)
 보안이 필요한 메일 비밀번호는 깃허브 **Secrets**에 등록하여 관리합니다.

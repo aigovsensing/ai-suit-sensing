@@ -40,6 +40,7 @@ Google News RSS       CourtListener API / PACER
                 ▼
          [리포트 발행]
     GitHub Issues ── Slack ── Email (HTML)
+    Email 3종: 조간 / 석간 / 📑 당일 소송건들 통합 정리(석간 +30분)
 ```
 
 ---
@@ -70,7 +71,11 @@ Google News RSS       CourtListener API / PACER
 | `COURTLISTENER_TOKEN` | Secret | CourtListener API 토큰 |
 | `GEMINI_API_KEY` | Secret | Gemini AI API 키 |
 | `SMTP_PASS` | Secret | Gmail 앱 비밀번호 |
-| `ENABLE_EMAIL_SENDER` | Variable | 이메일 발송 ON/OFF (`1`=ON) |
+| `ENABLE_EMAIL_SENDER` | Variable | 이메일 발송 마스터 ON/OFF (`1`=ON) |
+| `ENABLE_EMAIL_MORNING` | Variable | 🗓️ 조간뉴스 이메일 발송 (기본 `1`=ON, `0`=중단) |
+| `ENABLE_EMAIL_EVENING` | Variable | 🧠 석간뉴스 이메일 발송 (기본 `1`=ON, `0`=중단) |
+| `ENABLE_EMAIL_CONSOLIDATED` | Variable | 📑 당일 소송건들 통합 정리 이메일 발송 (기본 `1`=ON, `0`=중단) |
+| `EVENING_REPORT_HOUR` | Variable | 석간뉴스 발행 기준 시각 KST (기본: `21`) |
 | `LOOKBACK_DAYS` | Variable | 뉴스/소송 수집 기간 (기본: `3`) |
 | `GEMINI_AISUIT_TREND_DAYS` | Variable | 조간뉴스 분석 활성화 |
 | `PREVIOUS_ITEM_DEDUP_DAYS` | Variable | 이전 이슈 중복 제거 범위 |
