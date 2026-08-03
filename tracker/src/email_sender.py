@@ -191,7 +191,7 @@ def _extract_title_line(subject: str, content: str) -> str:
     """이메일 헤더에 표시할 제목 라인을 추출합니다."""
     for line in content.splitlines():
         stripped = line.strip().lstrip("#").strip()
-        if stripped and ("조간뉴스" in stripped or "석간뉴스" in stripped):
+        if stripped and ("조간뉴스" in stripped or "석간뉴스" in stripped or "당일 소송건들 통합 정리 자료" in stripped):
             return stripped
     # 없으면 이메일 제목에서 따옴표 내 텍스트 추출
     import re

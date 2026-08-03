@@ -4,11 +4,12 @@ import re
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
+import sys
 from .fetch import fetch_news
 from .extract import load_known_cases, build_lawsuits_from_news
 from .render import render_markdown
 from .github_issue import find_or_create_issue, create_comment, close_other_daily_issues
-from .github_issue import list_comments
+from .github_issue import list_comments, list_issues_by_label
 from .slack import post_to_slack
 from .utils import debug_log, slugify_case_name
 from .dedup import apply_deduplication
@@ -393,6 +394,69 @@ def main() -> None:
         debug_log(f"Slack 전송 완료")
     except Exception as e:
         debug_log(f"Slack 전송 실패: {e}")
-        
+
+
+def send_consolidated_email() -> None:
+    """
+    '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 독립 엔트리포인트.
+
+    석간뉴스가 발송되고 30분 뒤 시점(별도 워크플로 cron)에 실행되어, 당일(오늘) 이슈의
+    모든 댓글을 취합한 통합 정리 리포트를 이메일로 보낸다. GitHub 이슈에는 별도 댓글을
+    추가하지 않는다(통합 리포트는 이슈 Close 시점에 이미 댓글로 누적된다).
+
+    가드: 당일 이슈에 석간뉴스가 아직 없으면(=석간 발송 전) 발송을 건너뛴다. 이로써
+    "석간 발송 30분 뒤"라는 순서를 보장하고, 오발송을 방지한다.
+    """
+    from .dedup import generate_consolidated_report
+
+    owner = os.environ.get("GITHUB_OWNER")
+    repo = os.environ.get("GITHUB_REPO")
+    gh_token = os.environ.get("GITHUB_TOKEN")
+    if not all([owner, repo, gh_token]):
+        missing = [k for k, v in {"GITHUB_OWNER": owner, "GITHUB_REPO": repo, "GITHUB_TOKEN": gh_token}.items() if not v]
+        raise ValueError(f"필수 환경 변수가 누락되었습니다: {', '.join(missing)}")
+
+    base_title = os.environ.get("ISSUE_TITLE_BASE", "AI학습데이터 저작권 소송 모니터링")
+    issue_label = os.environ.get("ISSUE_LABEL", "ai-lawsuit-monitor")
+
+    # 당일(KST) 이슈 제목 조립 — main()과 동일한 규칙
+    now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
+    weekdays_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    weekday_str = weekdays_en[now_kst.weekday()]
+    issue_day_kst = f"{now_kst.strftime('%Y-%m-%d')} {weekday_str}"
+    issue_title = f"{base_title} ({issue_day_kst})"
+
+    # 당일 이슈를 '찾기만' 한다(없으면 생성하지 않고 건너뜀)
+    issues = list_issues_by_label(owner, repo, gh_token, issue_label, state="open", per_page=50)
+    issue_no = next((int(it["number"]) for it in issues if it.get("title") == issue_title), None)
+    if issue_no is None:
+        debug_log(f"통합 정리 이메일: 당일 이슈('{issue_title}')를 찾지 못해 발송을 건너뜁니다.")
+        return
+
+    comments = list_comments(owner, repo, gh_token, issue_no)
+
+    # 가드: 석간뉴스가 이미 발행된 뒤에만 통합 정리 이메일을 보낸다.
+    evening_already = any("(석간뉴스" in (c.get("body") or "") for c in comments)
+    if not evening_already:
+        debug_log("통합 정리 이메일: 당일 석간뉴스가 아직 없어 발송을 건너뜁니다.")
+        return
+
+    report = generate_consolidated_report(comments)
+    if not report or report.strip() == "수집된 리포트 내용이 없습니다.":
+        debug_log("통합 정리 이메일: 취합할 리포트 내용이 없어 발송을 건너뜁니다.")
+        return
+
+    subject = f"[AI 학습데이터 소송] {now_kst.strftime('%Y-%m-%d')} 당일 소송건들 통합 정리 자료"
+    try:
+        send_email_report(subject, report)
+        debug_log(f"Issue #{issue_no} 당일 소송건들 통합 정리 이메일 발송 완료")
+    except Exception as email_err:
+        print(f"[ERROR] 통합 정리 이메일 발송 중 예외 발생: {email_err}")
+
+
 if __name__ == "__main__":
-    main()
+    # 인자로 'consolidated-email'을 주면 통합 정리 이메일만 발송(석간 30분 뒤 별도 cron).
+    if len(sys.argv) > 1 and sys.argv[1] == "consolidated-email":
+        send_consolidated_email()
+    else:
+        main()

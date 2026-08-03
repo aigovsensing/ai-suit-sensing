@@ -1,0 +1,59 @@
+name: consolidated-email
+
+# '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 전용 워크플로.
+#
+# 발송 시점: 석간뉴스 발송 30분 뒤.
+#   - 석간뉴스는 KST 21시(EVENING_REPORT_HOUR 기본값) 실행에서 발송된다
+#     (UTC 12:00 = lawsuit-monitor 의 "0 9-21/3 * * *" cron 중 하나).
+#   - 따라서 이 워크플로는 그 30분 뒤인 UTC 12:30(= KST 21:30)에 실행한다.
+#
+# 안전장치: run.py 의 send_consolidated_email() 는 당일 이슈에 '석간뉴스'가
+# 이미 존재할 때만 이메일을 보낸다. 석간이 아직 없으면(예: EVENING_REPORT_HOUR 를
+# 변경한 경우) 조용히 건너뛴다. EVENING_REPORT_HOUR 를 바꾸면 아래 cron 도 함께
+# 그 시각 +30분(UTC 기준)으로 조정할 것.
+
+permissions:
+  contents: read
+  issues: write
+
+on:
+  schedule:
+    - cron: "30 12 * * *" # 석간(KST 21:00 / UTC 12:00) 발송 30분 뒤 = KST 21:30 / UTC 12:30
+  workflow_dispatch: {}
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        # 모노레포 통합: tracker/ 하위 프로젝트 기준으로 실행
+        working-directory: tracker
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install deps
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Send consolidated report email
+        env:
+          GITHUB_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPO: ${{ github.event.repository.name }}
+          GITHUB_TOKEN: ${{ github.token }}
+          ISSUE_TITLE_BASE: "AI학습데이터 저작권 소송 모니터링"
+          ISSUE_LABEL: "ai-lawsuit-monitor"
+          # 디버그 모드(0/1). Actions -> Variables에 DEBUG=1 설정 시 활성화
+          DEBUG: ${{ vars.DEBUG }}
+          # 이메일 전송 활성화 (1: 활성화, 0: 비활성화)
+          ENABLE_EMAIL_SENDER: ${{ vars.ENABLE_EMAIL_SENDER || '0' }}
+          # 이메일 발송용 SMTP 앱 비밀번호
+          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
+        run: |
+          python -m src.run consolidated-email
