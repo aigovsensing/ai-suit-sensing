@@ -26,7 +26,7 @@ Gmail의 SMTP(Simple Mail Transfer Protocol) 서버를 통해 외부 프로그�
 1. Google 계정 → **[보안](https://myaccount.google.com/security)** 탭
 2. "Google에 로그인" 섹션 → **2단계 인증** 확인 (반드시 활성화되어 있어야 함)
 3. **[앱 비밀번호](https://myaccount.google.com/apppasswords)** 클릭
-4. 앱 선택: **"기타(맞춤 이름)"** → 이름 입력 (예: `ai-suit-tracker`)
+4. 앱 선택: **"기타(맞춤 이름)"** → 이름 입력 (예: `ai-suit-sensing`)
 5. **"생성"** 클릭 → 16자리 비밀번호 발급
 6. GitHub Secrets에 등록:
    ```
