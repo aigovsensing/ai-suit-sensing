@@ -219,7 +219,7 @@ sequenceDiagram
     T->>GM: KST 21시 이후 실행 시 당일 요약 요청
     GM-->>GI: 🧠 석간뉴스 댓글 (당일 소송건 요약)
     T->>N: 석간뉴스 이메일 발송
-    CRON->>T: 석간 30분 뒤(KST 21:30) 실행
+    CRON->>T: KST 22:00 실행
     T->>N: 📑 당일 소송건들 통합 정리 자료 이메일 발송
     CRON->>A: 매일 KST 10:00 실행
     A->>GI: 최근 이슈 리포트 수집·분석 (LLM 구조화)
@@ -230,7 +230,7 @@ sequenceDiagram
 
 1. **센싱** — `tracker`가 KST 08~17시에는 매시간, 그 외에는 3시간마다 CourtListener·RECAP과 Google News RSS에서 AI 학습데이터 소송을 수집합니다.
 2. **리포트** — 당일·이전 이슈 댓글과 대조해 중복을 제거한 뒤, 일자별 GitHub 이슈(`AI학습데이터 저작권 소송 모니터링 (YYYY-MM-DD)`)에 신규/업데이트 건을 댓글로 누적합니다.
-3. **조간·석간·통합 정리** — 당일 첫 실행에서 Gemini가 🗓️ 조간뉴스(최근 N일 동향)를, KST 21시 이후 실행에서 🧠 석간뉴스(당일 요약)를 생성해 이슈 댓글과 이메일로 발행합니다. 석간 발송 30분 뒤(KST 21:30, [`.github/workflows/consolidated-email.yml`](./.github/workflows/consolidated-email.yml))에는 당일 이슈 댓글을 취합한 📑 **당일 소송건들 통합 정리 자료**를 이메일로 추가 발송합니다(당일 이슈에 석간뉴스가 존재할 때만 발송). 이 **3종 이메일은 각각 독립 스위치**(`ENABLE_EMAIL_MORNING`/`ENABLE_EMAIL_EVENING`/`ENABLE_EMAIL_CONSOLIDATED`, 기본 활성)로 발송 여부를 켜고 끌 수 있으며, 상위에 마스터 스위치 `ENABLE_EMAIL_SENDER`가 있습니다.
+3. **조간·석간·통합 정리** — 당일 첫 실행에서 Gemini가 🗓️ 조간뉴스(최근 N일 동향)를, KST 21시 이후 실행에서 🧠 석간뉴스(당일 요약)를 생성해 이슈 댓글과 이메일로 발행합니다. KST 22시 이후(KST 22:00, [`.github/workflows/consolidated-email.yml`](./.github/workflows/consolidated-email.yml))에는 당일 이슈 댓글을 취합한 📑 **당일 소송건들 통합 정리 자료**를 이메일로 추가 발송합니다(당일 이슈에 석간뉴스가 존재할 때만 발송). 이 **3종 이메일은 각각 독립 스위치**(`ENABLE_EMAIL_MORNING`/`ENABLE_EMAIL_EVENING`/`ENABLE_EMAIL_CONSOLIDATED`, 기본 활성)로 발송 여부를 켜고 끌 수 있으며, 상위에 마스터 스위치 `ENABLE_EMAIL_SENDER`가 있습니다.
 4. **마감** — 다음 날 새 이슈가 생성되면 전날 이슈는 통합 리포트(통계/테이블)를 남기고 자동 Close 됩니다. 석간뉴스가 미발행 상태라면 이 시점에 백필합니다.
 5. **정리** — 매일 KST 10:00 `analyzer`가 쌓인 이슈 리포트를 분석해 정본 CSV 대비 변경 제안 PR을 생성합니다. 신규 소송이 포함되면 **사람이 PR 검토로 반영 여부를 결정**하고, 고신뢰(≥0.95) 업데이트만으로 구성된 제안은 자동 머지됩니다.
 6. **시각화** — 승인되어 갱신된 정본 CSV를 `dashboard`(FastAPI, `:8007`)가 지도 히트맵·통계·소송 목록으로 시각화합니다. 운영 서버는 [`dashboard/scripts/auto_pull.sh`](./dashboard/scripts/auto_pull.sh)(cron, 5분 주기)가 `main`을 자동 반영하므로 merge 후 별도 조작이 필요 없습니다. 접속에는 로그인 암호가 필요합니다.
@@ -410,7 +410,7 @@ ai-suit-sensing/
 ├── docs/           # GitHub Pages 정적 배포 산출물 (aigovsensing.github.io/ai-suit-sensing)
 ├── .github/workflows/
 │   ├── lawsuit-monitor.yml   # tracker 자동 센싱 (스케줄)
-│   ├── consolidated-email.yml # 📑 당일 소송건들 통합 정리 자료 이메일 (석간 30분 뒤, KST 21:30)
+│   ├── consolidated-email.yml # 📑 당일 소송건들 통합 정리 자료 이메일 (KST 22:00)
 │   ├── analyzer.yml      # analyzer 제안 → PR 생성 (수동/스케줄)
 │   └── pages.yml         # dashboard → GitHub Pages 빌드·배포 (main push)
 ├── LICENSE

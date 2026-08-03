@@ -400,12 +400,12 @@ def send_consolidated_email() -> None:
     """
     '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 독립 엔트리포인트.
 
-    석간뉴스가 발송되고 30분 뒤 시점(별도 워크플로 cron)에 실행되어, 당일(오늘) 이슈의
-    모든 댓글을 취합한 통합 정리 리포트를 이메일로 보낸다. GitHub 이슈에는 별도 댓글을
-    추가하지 않는다(통합 리포트는 이슈 Close 시점에 이미 댓글로 누적된다).
+    KST 22시 이후(별도 워크플로 cron)에 실행되어, 당일(오늘) 이슈의 모든 댓글을 취합한
+    통합 정리 리포트를 이메일로 보낸다. GitHub 이슈에는 별도 댓글을 추가하지 않는다
+    (통합 리포트는 이슈 Close 시점에 이미 댓글로 누적된다).
 
-    가드: 당일 이슈에 석간뉴스가 아직 없으면(=석간 발송 전) 발송을 건너뛴다. 이로써
-    "석간 발송 30분 뒤"라는 순서를 보장하고, 오발송을 방지한다.
+    가드: 당일 이슈에 석간뉴스(KST 21시 이후 발행)가 아직 없으면 발송을 건너뛴다.
+    이로써 "석간 발송 이후"라는 순서를 보장하고, 오발송을 방지한다.
     """
     from .dedup import generate_consolidated_report
 
@@ -455,7 +455,7 @@ def send_consolidated_email() -> None:
 
 
 if __name__ == "__main__":
-    # 인자로 'consolidated-email'을 주면 통합 정리 이메일만 발송(석간 30분 뒤 별도 cron).
+    # 인자로 'consolidated-email'을 주면 통합 정리 이메일만 발송(KST 22시 별도 cron).
     if len(sys.argv) > 1 and sys.argv[1] == "consolidated-email":
         send_consolidated_email()
     else:

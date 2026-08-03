@@ -40,7 +40,7 @@ Google News RSS       CourtListener API / PACER
                 ▼
          [리포트 발행]
     GitHub Issues ── Slack ── Email (HTML)
-    Email 3종: 조간 / 석간 / 📑 당일 소송건들 통합 정리(석간 +30분)
+    Email 3종: 조간 / 석간(KST 21시~) / 📑 당일 소송건들 통합 정리(KST 22시~)
 ```
 
 ---
