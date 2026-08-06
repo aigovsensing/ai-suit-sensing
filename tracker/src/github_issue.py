@@ -134,20 +134,26 @@ def close_other_daily_issues(owner: str, repo: str, token: str, label: str, base
 
                     daily_summary = generate_daily_report_from_data(u_news, u_cases, report_date=report_date)
                     if daily_summary:
-                        # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
+                        # 3개 카테고리(1.Gemini 요약 / 2.국내외 기사 / 3.신규 소송) 일관 구조로 조립.
+                        # 이 경로(이슈 Close 시점)에는 CourtListener 검색 결과(hits)가 없으므로
+                        # "3. 신규 소송"은 assemble_digest 내부에서 자체 질의한다.
+                        issue_url = f"https://github.com/{owner}/{repo}/issues/{num}"
                         try:
-                            from .news_digest import build_daily_news_section
-                            news_section = build_daily_news_section(report_date=report_date)
-                            if news_section:
-                                daily_summary = f"{daily_summary}\n\n---\n\n{news_section}"
+                            from .digest_assembly import assemble_digest
+                            github_body, email_body = assemble_digest(
+                                daily_summary,
+                                report_date=report_date,
+                                issue_url=issue_url,
+                            )
                         except Exception as news_err:
                             import sys
-                            print(f"[ERROR] 당일 뉴스 소식 생성 중 예외 발생: {news_err}", file=sys.stderr)
-                        create_comment(owner, repo, token, num, daily_summary)
+                            print(f"[ERROR] 리포트 조립 중 예외 발생: {news_err}", file=sys.stderr)
+                            github_body = email_body = daily_summary
+                        create_comment(owner, repo, token, num, github_body)
                         # 이메일 발송
                         try:
-                            email_subject = get_subject_for_report(daily_summary, "evening")
-                            send_email_report(email_subject, daily_summary, report_type="evening")
+                            email_subject = get_subject_for_report(email_body, "evening")
+                            send_email_report(email_subject, email_body, report_type="evening")
                         except Exception as email_err:
                             import sys
                             print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}", file=sys.stderr)

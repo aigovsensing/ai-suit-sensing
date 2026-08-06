@@ -25,7 +25,6 @@ from .queries import COURTLISTENER_QUERIES
 from .trend import generate_trend_summary
 from .gemini import get_gemini_model_display_name
 from .email_sender import send_email_report, get_subject_for_report
-from .news_digest import build_daily_news_section
 
 def main() -> None:
     # 0) 환경 변수 로드
@@ -213,16 +212,22 @@ def main() -> None:
                 debug_log(f"Gemini 동향 요약 기능 활성화 (설정 기간: {trend_days}일)")
                 trend_summary = generate_trend_summary(lawsuits, cl_cases, trend_days, report_date=now_kst.strftime('%Y-%m-%d'))
                 if trend_summary:
-                    # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
-                    news_section = build_daily_news_section(report_date=now_kst.strftime('%Y-%m-%d'))
-                    if news_section:
-                        trend_summary = f"{trend_summary}\n\n---\n\n{news_section}"
-                    create_comment(owner, repo, gh_token, issue_no, trend_summary)
+                    # 3개 카테고리(1.Gemini 요약 / 2.국내외 기사 / 3.신규 소송) 일관 구조로 조립.
+                    # GitHub 댓글용/이메일용 본문을 함께 생성(2.더보기 처리만 다름).
+                    from .digest_assembly import assemble_digest
+                    github_body, email_body = assemble_digest(
+                        trend_summary,
+                        report_date=now_kst.strftime('%Y-%m-%d'),
+                        cl_lookback_days=lookback_days,
+                        issue_url=issue_url,
+                        hits=hits,
+                    )
+                    create_comment(owner, repo, gh_token, issue_no, github_body)
                     debug_log(f"Issue #{issue_no} Gemini 동향 요약 댓글 업로드 완료")
                     # 이메일 발송
                     try:
-                        email_subject = get_subject_for_report(trend_summary, "morning", trend_days)
-                        send_email_report(email_subject, trend_summary, report_type="morning")
+                        email_subject = get_subject_for_report(email_body, "morning", trend_days)
+                        send_email_report(email_subject, email_body, report_type="morning")
                     except Exception as email_err:
                         print(f"[ERROR] 조간뉴스 이메일 발송 중 예외 발생: {email_err}")
         except Exception as e:
@@ -274,15 +279,20 @@ def main() -> None:
                     u_news, u_cases, report_date=now_kst.strftime('%Y-%m-%d')
                 )
                 if daily_summary:
-                    # 당일 뉴스 소식(국내/해외, 중복 보도 순) 섹션 추가 (구글 뉴스 검색 기반, AI 미사용)
-                    news_section = build_daily_news_section(report_date=now_kst.strftime('%Y-%m-%d'))
-                    if news_section:
-                        daily_summary = f"{daily_summary}\n\n---\n\n{news_section}"
-                    create_comment(owner, repo, gh_token, issue_no, daily_summary)
+                    # 3개 카테고리(1.Gemini 요약 / 2.국내외 기사 / 3.신규 소송) 일관 구조로 조립.
+                    from .digest_assembly import assemble_digest
+                    github_body, email_body = assemble_digest(
+                        daily_summary,
+                        report_date=now_kst.strftime('%Y-%m-%d'),
+                        cl_lookback_days=lookback_days,
+                        issue_url=issue_url,
+                        hits=hits,
+                    )
+                    create_comment(owner, repo, gh_token, issue_no, github_body)
                     debug_log(f"Issue #{issue_no} 석간뉴스(당일 저녁) 댓글 업로드 완료")
                     try:
-                        email_subject = get_subject_for_report(daily_summary, "evening")
-                        send_email_report(email_subject, daily_summary, report_type="evening")
+                        email_subject = get_subject_for_report(email_body, "evening")
+                        send_email_report(email_subject, email_body, report_type="evening")
                     except Exception as email_err:
                         print(f"[ERROR] 석간뉴스 이메일 발송 중 예외 발생: {email_err}")
             else:

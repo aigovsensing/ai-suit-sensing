@@ -182,7 +182,29 @@ def _md_escape(text: str) -> str:
     return text.replace("[", "\\[").replace("]", "\\]")
 
 
-def _render_category(header: str, clusters: List[_Cluster]) -> str:
+@dataclass
+class NewsData:
+    """수집·군집화가 끝난 뉴스 데이터. 한 번 수집해 GitHub/이메일 두 버전으로 렌더링."""
+    today: str
+    lookback_days: int
+    dom_clusters: List[_Cluster] = field(default_factory=list)
+    ovs_clusters: List[_Cluster] = field(default_factory=list)
+
+
+def _cluster_stats(clusters: List[_Cluster]) -> tuple[int, int]:
+    """(총 기사 수, 중복 기사 수)를 반환. 중복 = 총 기사 - 고유 화제(군집) 수."""
+    total = sum(c.count for c in clusters)
+    duplicates = total - len(clusters)
+    return total, duplicates
+
+
+def _render_category(
+    header: str,
+    clusters: List[_Cluster],
+    for_email: bool = False,
+    issue_url: str | None = None,
+) -> str:
+    # 건수 요약은 상위 '## 2.' 섹션의 불릿에 이미 표기되므로 소제목은 간결하게 유지.
     lines: List[str] = [f"### {header}"]
     if not clusters:
         lines.append("")
@@ -200,36 +222,52 @@ def _render_category(header: str, clusters: List[_Cluster]) -> str:
         lines.append(f"{i}. [{_md_escape(rep.title)}]({rep.url}){badge}")
 
     if rest:
-        # 5위 밖은 "더보기 (N개)" 접기 안에 노출 (GitHub·이메일 공통 렌더)
         rest_total = sum(c.count for c in rest)
-        items_html = "\n".join(
-            f'  <li><a href="{html.escape(c.rep.url, quote=True)}">'
-            f"{html.escape(c.rep.title)}</a>"
-            + (f" 🔥 (중복 {c.count}건)" if c.count > 1 else "")
-            + "</li>"
-            for c in rest
-        )
-        lines.append("")
-        lines.append("<details>")
-        lines.append(f"<summary>더보기 ({len(rest)}개)</summary>")
-        lines.append("")
-        lines.append("<ul>")
-        lines.append(items_html)
-        lines.append("</ul>")
-        lines.append("</details>")
-        _ = rest_total  # (참고용) 접힌 기사들의 총 중복 건수
+        if for_email:
+            # ── 이메일 버전 ────────────────────────────────────────
+            # Gmail(특히 안드로이드 앱)은 <details>/<summary> 접기를 지원하지 않아
+            # 접힌 내용이 처음부터 모두 펼쳐져 보인다. 따라서 이메일에서는 상위
+            # TOP_N 건만 노출하고, 나머지는 접기 대신 GitHub 이슈 링크로 안내한다.
+            lines.append("")
+            if issue_url:
+                lines.append(
+                    f"> ▶ 이 외 **{len(rest)}건**(중복 포함 {rest_total}건)이 더 있습니다. "
+                    f"전체 목록은 [GitHub 이슈에서 보기 →]({issue_url}) 에서 확인하세요."
+                )
+            else:
+                lines.append(
+                    f"> ▶ 이 외 **{len(rest)}건**(중복 포함 {rest_total}건)이 더 있으며, "
+                    "전체 목록은 GitHub 이슈에서 확인할 수 있습니다."
+                )
+        else:
+            # ── GitHub 버전 ────────────────────────────────────────
+            # GitHub 이슈/데스크톱 이메일은 <details>를 지원하므로 접기로 노출.
+            items_html = "\n".join(
+                f'  <li><a href="{html.escape(c.rep.url, quote=True)}">'
+                f"{html.escape(c.rep.title)}</a>"
+                + (f" 🔥 (중복 {c.count}건)" if c.count > 1 else "")
+                + "</li>"
+                for c in rest
+            )
+            lines.append("")
+            lines.append("<details>")
+            lines.append(f"<summary>더보기 ({len(rest)}개)</summary>")
+            lines.append("")
+            lines.append("<ul>")
+            lines.append(items_html)
+            lines.append("</ul>")
+            lines.append("</details>")
 
     lines.append("")
     return "\n".join(lines)
 
 
-def build_daily_news_section(report_date: str | None = None, lookback_days: int | None = None) -> str:
+def collect_daily_news(
+    report_date: str | None = None, lookback_days: int | None = None
+) -> NewsData | None:
     """
-    '당일 뉴스 소식' 마크다운 섹션을 생성한다. 실패하거나 기사가 전혀 없으면 "" 반환.
-
-    Args:
-        report_date: 표기용 날짜 (YYYY-MM-DD). 미지정 시 KST 오늘.
-        lookback_days: 검색 기간(일). 미지정 시 env DAILY_NEWS_LOOKBACK_DAYS(기본 2).
+    구글 뉴스에서 기사를 수집·군집화한다. (네트워크 호출은 여기서 1회만 수행)
+    기사가 전혀 없거나 실패하면 None 을 반환한다.
     """
     try:
         if lookback_days is None:
@@ -259,18 +297,61 @@ def build_daily_news_section(report_date: str | None = None, lookback_days: int 
 
         if not dom_clusters and not ovs_clusters:
             debug_log("[news_digest] 수집된 기사가 없어 '당일 뉴스 소식' 섹션을 생략합니다.")
-            return ""
+            return None
 
-        parts: List[str] = [
-            f"## 📰 당일 뉴스 소식 ({today})",
-            "",
-            f"> 최근 {lookback_days}일간 구글 뉴스에서 수집한 'AI 학습데이터 저작권 소송' "
-            "관련 기사입니다. **중복 보도(유사 제목) 건수가 많을수록 화제성이 높은** 순서로 정렬했습니다.",
-            "",
-            _render_category("(국내) AI 학습데이터 저작권 소송", dom_clusters),
-            _render_category("(해외) AI 학습데이터 저작권 소송", ovs_clusters),
-        ]
-        return "\n".join(parts).strip()
+        return NewsData(
+            today=today,
+            lookback_days=lookback_days,
+            dom_clusters=dom_clusters,
+            ovs_clusters=ovs_clusters,
+        )
     except Exception as e:
-        debug_log(f"[news_digest] '당일 뉴스 소식' 생성 실패: {e}")
+        debug_log(f"[news_digest] 뉴스 수집 실패: {e}")
+        return None
+
+
+def render_daily_news_section(
+    data: NewsData | None, for_email: bool = False, issue_url: str | None = None
+) -> str:
+    """
+    수집된 NewsData 를 '2. 국내외 ... 기사 모니터링' 마크다운 섹션으로 렌더링한다.
+
+    Args:
+        data: collect_daily_news() 결과. None 이면 "" 반환.
+        for_email: True 면 이메일 버전(더보기 대신 GitHub 링크), False 면 GitHub 버전(<details>).
+        issue_url: 이메일 버전에서 안내할 GitHub 이슈 URL.
+    """
+    if data is None:
         return ""
+
+    dom_total, dom_dup = _cluster_stats(data.dom_clusters)
+    ovs_total, ovs_dup = _cluster_stats(data.ovs_clusters)
+
+    parts: List[str] = [
+        "## 2. 국내외 AI 학습데이터 저작권 소송 관련 기사 모니터링 (출처: Google Alert)",
+        "",
+        f"> 최근 {data.lookback_days}일간 구글 뉴스(Google Alert)에서 수집한 'AI 학습데이터 저작권 소송' "
+        "관련 기사입니다. **중복 보도(유사 제목) 건수가 많을수록 화제성이 높은** 순서로 정렬했습니다.",
+        "",
+        f"* **(국내)** AI 학습데이터 저작권 소송: **{dom_total}건** (중복 기사들: {dom_dup}건)",
+        f"* **(해외)** AI 학습데이터 저작권 소송: **{ovs_total}건** (중복 기사들: {ovs_dup}건)",
+        "",
+        _render_category("2.1 (국내) AI 학습데이터 저작권 소송", data.dom_clusters, for_email, issue_url),
+        _render_category("2.2 (해외) AI 학습데이터 저작권 소송", data.ovs_clusters, for_email, issue_url),
+    ]
+    return "\n".join(parts).strip()
+
+
+def build_daily_news_section(
+    report_date: str | None = None,
+    lookback_days: int | None = None,
+    for_email: bool = False,
+    issue_url: str | None = None,
+) -> str:
+    """
+    '국내외 기사 모니터링' 섹션을 수집+렌더링까지 한 번에 수행하는 편의 래퍼.
+    (수집과 렌더를 나눠 쓰고 싶으면 collect_daily_news + render_daily_news_section 사용)
+    실패하거나 기사가 전혀 없으면 "" 반환.
+    """
+    data = collect_daily_news(report_date=report_date, lookback_days=lookback_days)
+    return render_daily_news_section(data, for_email=for_email, issue_url=issue_url)
