@@ -18,6 +18,7 @@ N일(LOOKBACK_DAYS) 이내에 '신규 접수'된 'AI 학습데이터 저작권' 
     docket_id/docket_absolute_url 등이 모두 들어 있어 추가 도켓 조회 없이 렌더링된다.
 """
 import os
+import html
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 from typing import List, Optional
@@ -34,6 +35,26 @@ def _md_escape(text: str) -> str:
 def _court_str(hit: dict) -> str:
     """짧은 법원명(예: N.D. Cal.)을 우선 사용, 없으면 전체 명칭."""
     return (hit.get("court_citation_string") or hit.get("court") or "").strip()
+
+
+def _nature_display(suit_nature: str) -> str:
+    """
+    Nature of Suit 값을 굵게(항상), '820 Copyright'이면 빨강색으로 표기.
+
+    820 Copyright 는 저작권자의 허가 없이 데이터셋을 학습에 이용해 제기된
+    'AI 학습데이터 저작권 소송'일 확률이 높아 눈에 띄게 강조한다.
+    <b>/<span style>는 이메일(HTML)에서 굵게/빨강으로 렌더된다. GitHub은 style
+    속성을 제거하므로, 820 인 경우 🔴 이모지로 시각적 강조를 보강한다.
+    (참고: email_sender 의 인라인 스타일 패스가 <strong> 에 검정색을 강제하므로
+     빨강 표기에는 <strong> 대신 <span style> 를 사용한다.)
+    """
+    val = (suit_nature or "").strip()
+    if not val:
+        return "미확인"
+    safe = html.escape(val)
+    if "820" in val:
+        return f'<span style="color:#d32f2f;font-weight:700;">🔴 {safe}</span>'
+    return f"<b>{safe}</b>"
 
 
 def _resolve_lookback(lookback_days: Optional[int]) -> int:
@@ -107,6 +128,7 @@ def build_new_lawsuits_section(
             docket_no = (c.get("docketNumber") or "").strip()
             date_filed = c["_date_filed"]
             court = _court_str(c)
+            suit_nature = (c.get("suitNature") or "").strip()
             cause = (c.get("cause") or "").strip()
             rel = c.get("docket_absolute_url") or ""
             url = (BASE + rel) if rel.startswith("/") else rel
@@ -114,14 +136,15 @@ def build_new_lawsuits_section(
             title = f"{name} ({docket_no})" if docket_no else name
             link = f"[{_md_escape(title)}]({url})" if url else f"**{_md_escape(title)}**"
 
-            meta = f"Date Filed: {date_filed}"
+            first = f"Date Filed: {date_filed}"
             if court:
-                meta += f" | 법원: {court}"
-            if cause:
-                meta += f" | Cause: {cause}"
+                first += f" | 법원: {court}"
 
             lines.append(f"{i}. {link}")
-            lines.append(f"   - {meta}")
+            lines.append(f"   - {first}")
+            lines.append(f"   - Nature of Suit: {_nature_display(suit_nature)}")
+            if cause:
+                lines.append(f"   - Cause: {cause}")
 
         return "\n".join(lines)
     except Exception as e:
