@@ -256,6 +256,33 @@ def _is_report_type_enabled(report_type: str | None) -> bool:
     return os.environ.get(env_key, "1") != "0"
 
 
+def _clean_list(values) -> list:
+    """문자열 리스트에서 공백 제거 + 빈 값 제외."""
+    if not isinstance(values, list):
+        return []
+    return [v.strip() for v in values if isinstance(v, str) and v.strip()]
+
+
+def _resolve_receivers(config: dict, report_type: str | None) -> list:
+    """
+    리포트 종류(morning/evening/consolidated)별 수신자 목록을 결정합니다.
+
+    우선순위:
+      1) config["receivers_by_type"][report_type] 에 값이 있으면 그 목록을 사용
+      2) 없거나 비어 있으면 config["receivers"] (기본/공통 수신자)로 폴백
+
+    이 폴백 규칙 덕분에 기존 email.json(‘receivers’만 있는 형태)도 그대로 동작하며,
+    특정 종류만 수신자를 다르게 지정하고 싶을 때 receivers_by_type 에 해당 종류만
+    채워 넣으면 된다.
+    """
+    by_type = config.get("receivers_by_type")
+    if report_type and isinstance(by_type, dict):
+        specific = _clean_list(by_type.get(report_type))
+        if specific:
+            return specific
+    return _clean_list(config.get("receivers"))
+
+
 def send_email_report(subject: str, content: str, report_type: str | None = None) -> None:
     """
     Gmail SMTP를 사용하여 email.json에 등록된 설정 및 수신자들로 이메일을 발송합니다.
@@ -296,14 +323,18 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
     smtp_host = config.get("smtp_host", "smtp.gmail.com")
     smtp_port = config.get("smtp_port", 587)
     sender = config.get("sender", "")
-    receivers = config.get("receivers", [])
 
     if not sender:
         print("[ERROR] email.json 내에 발신자 주소(sender)가 설정되지 않았습니다.")
         return
 
-    if not receivers:
-        print("[WARNING] email.json 내에 수신자(receivers) 목록이 비어 있습니다.")
+    # 리포트 종류별 수신자 결정 (receivers_by_type[type] → 없으면 공통 receivers 폴백)
+    clean_receivers = _resolve_receivers(config, report_type)
+    if not clean_receivers:
+        print(
+            f"[WARNING] email.json 내에 '{report_type}' 타입 및 공통(receivers) "
+            "수신자 목록이 모두 비어 있습니다."
+        )
         return
 
     # SMTP 앱 비밀번호 획득 (환경 변수 - GitHub Secrets)
@@ -312,8 +343,7 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
         print("[ERROR] SMTP 비밀번호(SMTP_PASS 환경변수)가 설정되지 않았습니다.")
         return
 
-    clean_receivers = [r.strip() for r in receivers if r.strip()]
-    debug_log(f"이메일 발송 작업을 시작합니다. (수신인: {clean_receivers})")
+    debug_log(f"이메일 발송 작업을 시작합니다. (타입: {report_type}, 수신인: {clean_receivers})")
 
     # ── HTML 변환 ──────────────────────────────────────────────
     title_line = _extract_title_line(subject, content)

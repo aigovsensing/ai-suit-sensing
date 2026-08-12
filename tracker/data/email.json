@@ -6,5 +6,11 @@
   "receivers": [
     "leemgs@gmail.com",
     "geunsik.lim@samsung.com"
-  ]
+  ],
+  "_comment_receivers_by_type": "리포트 종류별 수신자입니다. 각 종류(morning=조간, evening=석간, consolidated=통합정리)의 목록이 비어 있거나 없으면 위의 공통 'receivers'로 폴백합니다. 특정 종류만 다른 수신자에게 보내려면 해당 종류에 이메일 주소를 채워 넣으세요.",
+  "receivers_by_type": {
+    "morning": [],
+    "evening": [],
+    "consolidated": []
+  }
 }
