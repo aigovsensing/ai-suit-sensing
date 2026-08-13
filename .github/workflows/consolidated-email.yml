@@ -3,7 +3,7 @@ name: consolidated-email
 # '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 전용 워크플로.
 #
 # 발송 시점: KST 23시.
-#   - 석간뉴스는 KST 22시(EVENING_REPORT_HOUR 기본값) 실행에서 발송된다.
+#   - 석간뉴스는 KST 21시(EVENING_REPORT_HOUR 기본값) 실행에서 발송된다.
 #   - 통합 정리 자료는 그 이후인 KST 23:00(= UTC 14:00)에 발송한다.
 #
 # 안전장치: run.py 의 send_consolidated_email() 는 당일 이슈에 '석간뉴스'가
@@ -17,7 +17,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 14 * * *" # KST 23:00 = UTC 14:00 (석간 KST 22시 발송 이후)
+    - cron: "0 14 * * *" # KST 23:00 = UTC 14:00 (석간 KST 21시 발송 이후)
   workflow_dispatch: {}
 
 jobs:

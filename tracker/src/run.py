@@ -269,13 +269,13 @@ def main() -> None:
     create_comment(owner, repo, gh_token, issue_no, comment_body)
     debug_log(f"Issue #{issue_no} 메인 리포트 댓글 업로드 완료")
 
-    # 4-5) 석간뉴스(당일 저녁 요약) — KST 저녁(기본 22시) 이후 실행 시 '당일 이슈'에 발행
+    # 4-5) 석간뉴스(당일 저녁 요약) — KST 저녁(기본 21시) 이후 실행 시 '당일 이슈'에 발행
     # 기존에는 다음 날 이슈 Close 시점(익일 새벽)에만 생성돼 늦게 나갔음. 저녁 실행에서
     # 미리 생성하고, Close 시점에는 이미 있으면 건너뛴다(중복 방지, github_issue.py 참고).
     try:
-        # 빈 문자열/비숫자(예: GitHub Actions에서 Variable 미설정 시 "")이면 기본 22시
+        # 빈 문자열/비숫자(예: GitHub Actions에서 Variable 미설정 시 "")이면 기본 21시
         evening_hour_raw = (os.environ.get("EVENING_REPORT_HOUR") or "").strip()
-        evening_hour = int(evening_hour_raw) if evening_hour_raw.isdigit() else 22
+        evening_hour = int(evening_hour_raw) if evening_hour_raw.isdigit() else 21
         if now_kst.hour >= evening_hour:
             fresh_comments = list_comments(owner, repo, gh_token, issue_no)
             evening_already = any("(석간뉴스" in (c.get("body") or "") for c in fresh_comments)
