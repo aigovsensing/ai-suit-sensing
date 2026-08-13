@@ -7,6 +7,8 @@ on:
   schedule:
     - cron: "0 23,0-8 * * *" # Business hours (KST 08:00-17:00, UTC 23:00-08:00) every 1 hour
     - cron: "0 9-21/3 * * *" # Off-business hours (KST 18:00-06:00, UTC 09:00-21:00) every 3 hours
+    - cron: "0 22 * * *"     # 🗓️ 조간뉴스 발송용 (KST 07:00 = UTC 22:00)
+    - cron: "0 13 * * *"     # 🧠 석간뉴스 발송용 (KST 22:00 = UTC 13:00)
   workflow_dispatch: {}
 
 jobs:
@@ -65,8 +67,12 @@ jobs:
           ENABLE_EMAIL_MORNING: ${{ vars.ENABLE_EMAIL_MORNING || '1' }}
           # 🧠 석간뉴스
           ENABLE_EMAIL_EVENING: ${{ vars.ENABLE_EMAIL_EVENING || '1' }}
-          # 석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23). 미설정 시 코드 기본값 21시
-          EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR }}
+          # 🗓️ 조간뉴스 발행 기준 시각(KST, 0~23). 미설정 시 07시.
+          # 전용 cron(UTC 22:00 = KST 07:00)과 맞물려 하루 1회 07시에 발행된다.
+          MORNING_REPORT_HOUR: ${{ vars.MORNING_REPORT_HOUR || '7' }}
+          # 석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23). 미설정 시 22시.
+          # 전용 cron(UTC 13:00 = KST 22:00)과 맞물려 하루 1회 22시에 발행된다.
+          EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR || '22' }}
           # '당일 뉴스 소식' 섹션의 구글 뉴스 검색 기간(일). 미설정 시 코드 기본값 2일
           DAILY_NEWS_LOOKBACK_DAYS: ${{ vars.DAILY_NEWS_LOOKBACK_DAYS }}
           # 이메일 발송용 SMTP 앱 비밀번호
