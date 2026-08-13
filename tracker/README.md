@@ -156,7 +156,7 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
     "leemgs@gmail.com"
   ],
   "receivers_by_type": {
-    "morning": ["morning.only@example.com"],
+    "morning": ["morning.extra@example.com"],
     "evening": [],
     "consolidated": ["team-archive@example.com"]
   }
@@ -169,29 +169,31 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 | `smtp_host` | 선택 | `smtp.gmail.com` | 발송에 사용할 SMTP 메일 서버 호스트 주소 |
 | `smtp_port` | 선택 | `587` | 발송에 사용할 SMTP 포트 번호 |
 | `sender` | **필수** | (없음) | 발송을 수행할 Gmail 계정 주소 (앱 비밀번호와 연동된 계정) |
-| `receivers` | **필수** | (없음) | **공통(기본) 수신자 목록.** 아래 `receivers_by_type`에 해당 종류의 수신자가 지정되지 않았을 때 폴백으로 사용됩니다. |
-| `receivers_by_type` | 선택 | (없음) | **리포트 종류별 수신자 목록.** 종류별로 다른 사람에게 보내고 싶을 때 사용합니다. 하위 키는 `morning`(🗓️ 조간), `evening`(🧠 석간), `consolidated`(📑 통합 정리)입니다. |
+| `receivers` | **필수** | (없음) | **공통 수신자 목록.** 3종(조간·석간·통합) **모두 항상** 수신합니다. |
+| `receivers_by_type` | 선택 | (없음) | **리포트 종류별 '추가' 수신자 목록.** 공통 `receivers`에 **더해** 받을 사람을 종류별로 지정합니다. 하위 키는 `morning`(🗓️ 조간), `evening`(🧠 석간), `consolidated`(📑 통합 정리)입니다. |
 
-#### 📬 리포트 종류별 수신자 다르게 지정하기 (`receivers_by_type`)
-매일 발송되는 3종의 이메일에 대해 **각각 수신자를 다르게** 관리할 수 있습니다.
+#### 📬 리포트 종류별 수신자 관리 (`receivers_by_type`) — 합집합(Union) 방식
+매일 발송되는 3종의 이메일에 대해 **종류별로 추가 수신자**를 관리할 수 있습니다.
 
 | 종류 (key) | 이메일 제목 예시 | 발송 시점 |
 | --- | --- | --- |
-| `morning` | `[AI 학습데이터 소송] YYYY-MM-DD 조간 \| 소송 동향 (최근 N일간)` | 당일 첫 실행 |
-| `evening` | `[AI 학습데이터 소송] YYYY-MM-DD 석간 \| 소송 브리핑 (최근 1일간)` | KST `EVENING_REPORT_HOUR`시 이후 |
-| `consolidated` | `[AI 학습데이터 소송] YYYY-MM-DD 당일 소송건들 통합 정리 자료` | KST 22시 이후 |
+| `morning` | `[AI 학습데이터 소송] YYYY-MM-DD 조간 \| 소송 동향 (최근 N일간)` | KST 07:00 |
+| `evening` | `[AI 학습데이터 소송] YYYY-MM-DD 석간 \| 소송 브리핑 (최근 1일간)` | KST 22:00 |
+| `consolidated` | `[AI 학습데이터 소송] YYYY-MM-DD 당일 소송건들 통합 정리 자료` | KST 23:00 |
 
-**동작 규칙 (폴백):**
-- 특정 종류의 목록에 이메일이 **1개 이상 있으면** → 그 목록으로만 발송합니다.
-- 특정 종류의 목록이 **비어 있거나(`[]`) 없으면** → 공통 `receivers` 목록으로 발송합니다.
-- `receivers_by_type` 자체가 없으면(구버전 `email.json`) → 3종 모두 공통 `receivers`로 발송합니다. *(하위 호환)*
+**동작 규칙 (합집합):**
+- 공통 `receivers`는 **3종 모두 항상** 수신합니다.
+- 각 종류의 `receivers_by_type[종류]` 주소는 공통 목록에 **추가로 합쳐집니다**(대소문자 무시 중복 제거).
+- 즉, **해당 종류 실제 수신자 = `receivers` ∪ `receivers_by_type[종류]`**.
+- `receivers_by_type` 자체가 없으면(구버전 `email.json`) → 3종 모두 공통 `receivers`만 발송합니다. *(하위 호환)*
 
 **예시 (위 JSON 기준):**
-- `morning` → `morning.only@example.com` 에게만 발송 (전용 수신자)
-- `evening` → 목록이 비어 있어 공통 `receivers`(`ai.gov.sensing@gmail.com`, `leemgs@gmail.com`)로 발송
-- `consolidated` → `team-archive@example.com` 에게만 발송
+- `morning` → `ai.gov.sensing@gmail.com`, `leemgs@gmail.com`, **+ `morning.extra@example.com`**
+- `evening` → `ai.gov.sensing@gmail.com`, `leemgs@gmail.com` (추가 없음)
+- `consolidated` → `ai.gov.sensing@gmail.com`, `leemgs@gmail.com`, **+ `team-archive@example.com`**
 
-> 💡 모든 종류를 동일 수신자에게 보내려면 `receivers`만 채우고 `receivers_by_type`의 각 목록은 비워두면 됩니다(또는 `receivers_by_type` 필드를 생략).
+> 💡 특정 종류에만 사람을 더 넣고 싶으면 해당 종류 배열에 주소를 추가하세요. 공통 수신자는 항상 포함되므로 매 종류마다 반복해 적을 필요가 없습니다.
+> 특정 사람을 **모든** 리포트에서 받게 하려면 공통 `receivers`에 넣으세요.
 > 발송 자체를 끄고 싶으면 수신자 목록이 아니라 타입별 스위치(`ENABLE_EMAIL_MORNING`/`EVENING`/`CONSOLIDATED`)를 `0`으로 설정하세요.
 
 

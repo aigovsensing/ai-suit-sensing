@@ -265,22 +265,33 @@ def _clean_list(values) -> list:
 
 def _resolve_receivers(config: dict, report_type: str | None) -> list:
     """
-    리포트 종류(morning/evening/consolidated)별 수신자 목록을 결정합니다.
+    리포트 종류(morning/evening/consolidated)별 수신자 목록을 결정합니다. (합집합 방식)
 
-    우선순위:
-      1) config["receivers_by_type"][report_type] 에 값이 있으면 그 목록을 사용
-      2) 없거나 비어 있으면 config["receivers"] (기본/공통 수신자)로 폴백
+    - 공통 config["receivers"] 는 **항상** 포함됩니다.
+    - config["receivers_by_type"][report_type] 에 적힌 주소는 **추가** 수신자로 합쳐집니다.
+    - 대소문자 무시로 중복을 제거하며, 최초 등장 순서를 유지합니다.
 
-    이 폴백 규칙 덕분에 기존 email.json(‘receivers’만 있는 형태)도 그대로 동작하며,
-    특정 종류만 수신자를 다르게 지정하고 싶을 때 receivers_by_type 에 해당 종류만
-    채워 넣으면 된다.
+    예) receivers=[A, B], receivers_by_type.morning=[C, D] 이면
+        morning 수신자는 [A, B, C, D] 가 된다. (공통 A·B 는 종류와 무관하게 항상 수신)
+
+    receivers_by_type 가 없는 구버전 email.json 은 공통 receivers 만 사용되어
+    기존과 동일하게 동작한다(하위 호환).
     """
+    result: list = []
+    seen: set = set()
+
+    def _add(items) -> None:
+        for r in _clean_list(items):
+            key = r.lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(r)
+
+    _add(config.get("receivers"))  # 공통 수신자 (항상 포함)
     by_type = config.get("receivers_by_type")
     if report_type and isinstance(by_type, dict):
-        specific = _clean_list(by_type.get(report_type))
-        if specific:
-            return specific
-    return _clean_list(config.get("receivers"))
+        _add(by_type.get(report_type))  # 종류별 추가 수신자
+    return result
 
 
 def send_email_report(subject: str, content: str, report_type: str | None = None) -> None:
