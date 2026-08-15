@@ -26,6 +26,7 @@ from zoneinfo import ZoneInfo
 import feedparser
 
 from .utils import debug_log, parse_dt
+from .translate import translate_to_korean
 
 # ─────────────────────────────────────────────────────────────
 # 설정
@@ -219,7 +220,16 @@ def _render_category(
     for i, c in enumerate(top, 1):
         rep = c.rep
         badge = f" 🔥 (중복 {c.count}건)" if c.count > 1 else ""
-        lines.append(f"{i}. [{_md_escape(rep.title)}]({rep.url}){badge}")
+        # 영문 제목이면 한글 번역을 메인 링크로 노출하고 원문(영문)을 아래에 병기한다.
+        # (국내 한글 제목이면 translate_to_korean 이 "" 반환 → 원문 그대로 노출)
+        ko = translate_to_korean(rep.title)
+        if ko:
+            lines.append(
+                f"{i}. [{_md_escape(ko)}]({rep.url}){badge}"
+                f"<br><sub>🔤 {_md_escape(rep.title)}</sub>"
+            )
+        else:
+            lines.append(f"{i}. [{_md_escape(rep.title)}]({rep.url}){badge}")
 
     if rest:
         rest_total = sum(c.count for c in rest)
@@ -242,13 +252,18 @@ def _render_category(
         else:
             # ── GitHub 버전 ────────────────────────────────────────
             # GitHub 이슈/데스크톱 이메일은 <details>를 지원하므로 접기로 노출.
-            items_html = "\n".join(
-                f'  <li><a href="{html.escape(c.rep.url, quote=True)}">'
-                f"{html.escape(c.rep.title)}</a>"
-                + (f" 🔥 (중복 {c.count}건)" if c.count > 1 else "")
-                + "</li>"
-                for c in rest
-            )
+            # 영문 제목은 한글 번역을 메인으로, 원문(영문)을 아래에 병기한다.
+            li_items: List[str] = []
+            for c in rest:
+                dup = f" 🔥 (중복 {c.count}건)" if c.count > 1 else ""
+                ko = translate_to_korean(c.rep.title)
+                label = html.escape(ko) if ko else html.escape(c.rep.title)
+                orig = f"<br><sub>🔤 {html.escape(c.rep.title)}</sub>" if ko else ""
+                li_items.append(
+                    f'  <li><a href="{html.escape(c.rep.url, quote=True)}">'
+                    f"{label}</a>{dup}{orig}</li>"
+                )
+            items_html = "\n".join(li_items)
             lines.append("")
             lines.append("<details>")
             lines.append(f"<summary>더보기 ({len(rest)}개)</summary>")
