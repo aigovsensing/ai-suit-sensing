@@ -26,6 +26,7 @@ from typing import List, Optional
 from .utils import debug_log
 from .queries import COURTLISTENER_QUERIES
 from .courtlistener import search_recent_documents, BASE
+from .complaint_parse import dataset_url, extract_dataset_allegation, extract_dataset_names
 
 
 def _md_escape(text: str) -> str:
@@ -62,6 +63,47 @@ def _resolve_lookback(lookback_days: Optional[int]) -> int:
         return lookback_days
     raw = (os.environ.get("LOOKBACK_DAYS") or "").strip()
     return int(raw) if raw.isdigit() and int(raw) > 0 else 3
+
+
+def _related_datasets(hit: dict) -> str:
+    """검색 결과의 소장 내용에서 데이터셋 이름과 관련 주장을 표시한다."""
+    text_fields = (
+        hit.get("plain_text"), hit.get("snippet"), hit.get("text"),
+        hit.get("description"), hit.get("short_description"),
+        hit.get("extracted_ai_snippet"), hit.get("pdf_text_snippet"),
+    )
+    complaint_text = " ".join(str(value) for value in text_fields if value)
+    names = extract_dataset_names(complaint_text)
+    rendered = {
+        name.casefold(): f"[{name}]({dataset_url(name)})" if dataset_url(name) else name
+        for name in names
+    }
+
+    # 호출자가 구조화한 데이터셋 정보를 제공하는 경우에도 이를 빠뜨리지 않는다.
+    supplied = hit.get("related_datasets") or []
+    if isinstance(supplied, str):
+        supplied = [supplied]
+    for dataset in supplied:
+        if isinstance(dataset, dict):
+            name = str(dataset.get("name") or "").strip()
+            url = str(dataset.get("url") or "").strip()
+            value = f"[{_md_escape(name)}]({url})" if name and url else _md_escape(name)
+        else:
+            name = str(dataset).strip()
+            value = _md_escape(name)
+        if name:
+            # 구조화 데이터는 URL 등 더 풍부한 정보를 가질 수 있으므로 같은 이름을
+            # 소장 텍스트에서 이미 찾았더라도 해당 표시로 교체한다.
+            rendered[name.casefold()] = value
+            if not any(existing.casefold() == name.casefold() for existing in names):
+                names.append(name)
+
+    if not rendered:
+        return "해당 사항 없음"
+
+    allegation = extract_dataset_allegation(complaint_text, names, max_len=220)
+    datasets = ", ".join(rendered.values())
+    return f"{datasets} — 소장문서 관련 주장: {allegation}" if allegation else datasets
 
 
 def build_new_lawsuits_section(
@@ -145,6 +187,7 @@ def build_new_lawsuits_section(
             lines.append(f"   - Nature of Suit: {_nature_display(suit_nature)}")
             if cause:
                 lines.append(f"   - Cause: {cause}")
+            lines.append(f"   - 관련 데이터셋: {_related_datasets(c)}")
 
         return "\n".join(lines)
     except Exception as e:
