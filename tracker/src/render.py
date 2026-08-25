@@ -1,12 +1,14 @@
 from __future__ import annotations
 from typing import List
 from collections import Counter
+import html
 import re
 import copy
 from datetime import datetime
 from .extract import Lawsuit
 from .courtlistener import CLDocument, CLCaseSummary
 from .utils import debug_log, slugify_case_name
+from .complaint_parse import dataset_url, extract_dataset_names
 
 def _esc(s: str) -> str:
     s = str(s or "").strip()
@@ -20,6 +22,28 @@ def _esc(s: str) -> str:
 
 def _md_sep(col_count: int) -> str:
     return "|" + "---|" * col_count
+
+
+def _related_dataset_display(*texts: str) -> str:
+    """관련 텍스트에서 식별한 데이터셋을 굵은 빨간색으로 표시한다."""
+    names = extract_dataset_names(" ".join(str(text or "") for text in texts))
+    if not names:
+        return "-"
+
+    rendered = []
+    for name in names:
+        safe_name = html.escape(name)
+        url = dataset_url(name)
+        if url:
+            safe_url = html.escape(url, quote=True)
+            safe_name = (
+                f'<a href="{safe_url}" style="color:#d32f2f !important;">'
+                f'{safe_name}</a>'
+            )
+        rendered.append(
+            f'<span style="color:#d32f2f;font-weight:700;">🔴 {safe_name}</span>'
+        )
+    return ", ".join(rendered)
 
 
 def _get_data_icon(text: str) -> str:
@@ -302,8 +326,8 @@ def render_markdown(
         lines.append("")
         lines.append("> ℹ️ **중복건수** 표기: `제`=제목 완전일치, `키`=키워드(BM25) 유사, `의`=의미론적 유사 (예: `8 (제:6 키:2 의:0)`)")
         lines.append("")
-        lines.append("| No. | 기사일자 | 제목 | 소송번호 | 조건 (주요 키워드) | 소송사유 | 감지 레벨⬇️ | 중복건수 |")
-        lines.append(_md_sep(8))
+        lines.append("| No. | 기사일자 | 제목 | 소송번호 | 관련 데이터셋 | 조건 (주요 키워드) | 소송사유 | 감지 레벨⬇️ | 중복건수 |")
+        lines.append(_md_sep(9))
 
         # 기사일자 기준으로 정렬 (날짜 내림차순, 동일 날짜 시 감지 레벨 내림차순)
         scored_lawsuits = []
@@ -320,12 +344,16 @@ def render_markdown(
             title_cell = f"{icon} " + _mdlink(s.article_title or s.case_title, article_url)
 
             keyword_display = "<br>".join(keywords) if keywords else "-"
+            related_datasets = _related_dataset_display(
+                s.article_title, s.case_title, s.reason
+            )
 
             lines.append(
                 f"| {idx} | "
                 f"{_esc(s.update_or_filed_date)} | "
                 f"{title_cell} | "
                 f"{_esc(s.case_number)} | "
+                f"{related_datasets} | "
                 f"{_esc(keyword_display)} | "
                 f"{_short(s.reason)} | "
                 f"{format_detection_level(risk_score)} | "
@@ -347,11 +375,11 @@ def render_markdown(
         
         lines.append("")
         lines.append(
-            "| No. | 상태 | 케이스명 | 도켓번호 | Nature | 감지 레벨⬇️ | "
+            "| No. | 상태 | 케이스명 | 도켓번호 | Nature | 관련 데이터셋 | 감지 레벨⬇️ | "
             "소송이유 | AI학습관련 핵심주장 | 법적 근거 | 담당판사 | 법원 | "
             "Complaint 문서 번호 | Complaint PDF 링크 | 최근 도켓 업데이트 |"
         )
-        lines.append(_md_sep(14))
+        lines.append(_md_sep(15))
         
         # 감지 레벨 점수 기준으로 정렬 (내림차순, 동일 점수 시 날짜 내림차순)
         scored_cases = []
@@ -415,6 +443,15 @@ def render_markdown(
 
                 # 데이터 성격에 따른 아이콘 결정
                 icon = _get_data_icon(f"{c.case_name} {c.nature_of_suit} {c.cause} {extracted_causes} {extracted_ai_snippet}")
+                source_doc = doc_map.get(c.docket_id)
+                related_datasets = _related_dataset_display(
+                    c.case_name,
+                    c.cause,
+                    extracted_causes,
+                    extracted_ai_snippet,
+                    source_doc.description if source_doc else "",
+                    source_doc.pdf_text_snippet if source_doc else "",
+                )
                 
                 lines.append(
                     f"| {idx} | "
@@ -422,6 +459,7 @@ def render_markdown(
                     f"{icon} {_mdlink(c.case_name, docket_url)} | "
                     f"{_mdlink(c.docket_number, docket_url)} | "
                     f"{nature_display} | "
+                    f"{related_datasets} | "
                     f"{format_detection_level(score)} | "
                     f"{_short(extracted_causes, 120)} | "
                     f"{_short(extracted_ai_snippet, 120)} | "
@@ -600,5 +638,3 @@ def _get_data_category(text: str) -> str:
     if any(k in h for k in ["voice", "likeness", "personality", "biometric", "avatar", "deepfake", "speech", "vocal", "name and likeness"]): return "Voice/Likeness"
     if any(k in h for k in ["code", "software", "programming", "github", "source code", "developer", "copilot", "git"]): return "Code/Software"
     return "Other"
-
-
