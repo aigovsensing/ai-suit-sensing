@@ -31,7 +31,7 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
     def test_no_named_dataset_is_explicitly_rendered(self):
         body = build_new_lawsuits_section(lookback_days=3, hits=[self._hit()])
 
-        self.assertIn("관련 데이터셋: 해당 사항 없음", body)
+        self.assertIn("관련 데이터셋: 확인되지 않음", body)
 
     def test_structured_dataset_keeps_its_link(self):
         body = build_new_lawsuits_section(

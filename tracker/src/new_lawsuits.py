@@ -101,7 +101,7 @@ def _related_datasets(hit: dict) -> str:
                 names.append(name)
 
     if not rendered:
-        return "해당 사항 없음"
+        return "확인되지 않음"
 
     allegation = extract_dataset_allegation(complaint_text, names, max_len=220)
     datasets = ", ".join(rendered.values())
