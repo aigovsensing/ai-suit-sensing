@@ -75,7 +75,9 @@ def _related_datasets(hit: dict) -> str:
     complaint_text = " ".join(str(value) for value in text_fields if value)
     names = extract_dataset_names(complaint_text)
     rendered = {
-        name.casefold(): f"[{name}]({dataset_url(name)})" if dataset_url(name) else name
+        name.casefold(): (
+            f"[{_md_escape(name)}]({dataset_url(name)})" if dataset_url(name) else _md_escape(name)
+        )
         for name in names
     }
 

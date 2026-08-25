@@ -1,4 +1,5 @@
 from __future__ import annotations
+import html
 import re
 from typing import List, Tuple
 
@@ -76,6 +77,7 @@ def extract_ai_training_snippet(text: str, max_len: int = 280) -> str:
 
 def extract_dataset_names(text: str) -> List[str]:
     """소장 텍스트에서 명시적으로 이름이 언급된 데이터셋만 반환한다."""
+    text = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
     found = []
     for canonical_name, pattern in KNOWN_DATASETS:
         if pattern.search(text or ""):
@@ -83,11 +85,12 @@ def extract_dataset_names(text: str) -> List[str]:
 
     # 알려지지 않은 ``Name Dataset`` 표기도 보존한다. 일반명인 "the dataset"이나
     # "training dataset"은 특정 데이터셋을 가리키지 않으므로 제외한다.
-    generic = re.compile(r"\b([A-Z][A-Za-z0-9_.-]*(?:\s+[A-Z][A-Za-z0-9_.-]*){0,3})\s+Dataset\b")
-    ignored = {"the", "a", "training", "source", "image", "text"}
-    for match in generic.finditer(text or ""):
-        name = match.group(1).strip()
-        if name.lower() not in ignored and name not in found:
+    generic = re.compile(r"\b([A-Z][A-Za-z0-9_.-]*(?:\s+[A-Z][A-Za-z0-9_.-]*){0,2}\s+Dataset)\b")
+    ignored = {"the dataset", "a dataset", "training dataset", "source dataset", "image dataset", "text dataset"}
+    for match in generic.finditer(text):
+        name = re.sub(r"\s+", " ", match.group(1)).strip()
+        name = re.sub(r"^(?:The|A)\s+", "", name)
+        if name.casefold() not in ignored and not any(name.casefold() == item.casefold() for item in found):
             found.append(name)
     return found
 
@@ -99,7 +102,7 @@ def dataset_url(name: str) -> str:
 
 def extract_dataset_allegation(text: str, names: List[str], max_len: int = 220) -> str:
     """데이터셋 이름이 실제로 들어간 소장 문장을 우선하여 관련 주장을 반환한다."""
-    normalized = re.sub(r"<[^>]+>", " ", text or "")
+    normalized = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
     normalized = re.sub(r"\s+", " ", normalized).strip()
     candidates = _sentences(normalized)
     for sentence in candidates:

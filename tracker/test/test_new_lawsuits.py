@@ -73,6 +73,27 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
         self.assertEqual(dataset_list.count("Objaverse-XL"), 1)
         self.assertIn("https://example.test/objaverse", line)
 
+    def test_html_snippet_is_normalized_before_rendering(self):
+        body = build_new_lawsuits_section(
+            lookback_days=3,
+            hits=[self._hit(
+                snippet="Plaintiff alleges <mark>Books3</mark> was copied &amp; used for training."
+            )],
+        )
+
+        line = next(line for line in body.splitlines() if "관련 데이터셋:" in line)
+        self.assertIn("Books3", line)
+        self.assertIn("copied & used", line)
+        self.assertNotIn("<mark>", line)
+
+    def test_generic_dataset_preserves_dataset_suffix(self):
+        body = build_new_lawsuits_section(
+            lookback_days=3,
+            hits=[self._hit(snippet="The Acme Archive Dataset was used to train the model.")],
+        )
+
+        self.assertIn("관련 데이터셋: Acme Archive Dataset", body)
+
 
 if __name__ == "__main__":
     unittest.main()
