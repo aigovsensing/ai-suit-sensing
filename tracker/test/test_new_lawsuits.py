@@ -24,7 +24,8 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
             hits=[self._hit(snippet="Plaintiff alleges Books3 was copied without permission as training data.")],
         )
 
-        self.assertIn("관련 데이터셋: Books3", body)
+        self.assertIn("🔴 Books3", body)
+        self.assertIn('style="color:#d32f2f;font-weight:700;"', body)
         self.assertIn("소장문서 관련 주장:", body)
         self.assertIn("without permission", body)
 
@@ -32,6 +33,8 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
         body = build_new_lawsuits_section(lookback_days=3, hits=[self._hit()])
 
         self.assertIn("관련 데이터셋: 확인되지 않음", body)
+        dataset_line = next(line for line in body.splitlines() if "관련 데이터셋:" in line)
+        self.assertNotIn("🔴", dataset_line)
 
     def test_structured_dataset_keeps_its_link(self):
         body = build_new_lawsuits_section(
@@ -43,7 +46,8 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "관련 데이터셋: [Objaverse-XL](https://github.com/allenai/objaverse-xl)", body
+            '<a href="https://github.com/allenai/objaverse-xl" '
+            'style="color:#d32f2f !important;">Objaverse-XL</a>', body
         )
 
     def test_known_dataset_gets_official_link_without_structured_metadata(self):
@@ -53,7 +57,8 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
         )
 
         self.assertIn(
-            "관련 데이터셋: [Objaverse-XL](https://github.com/allenai/objaverse-xl)", body
+            '<a href="https://github.com/allenai/objaverse-xl" '
+            'style="color:#d32f2f !important;">Objaverse-XL</a>', body
         )
 
     def test_structured_dataset_does_not_duplicate_detected_name(self):
@@ -92,7 +97,7 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
             hits=[self._hit(snippet="The Acme Archive Dataset was used to train the model.")],
         )
 
-        self.assertIn("관련 데이터셋: Acme Archive Dataset", body)
+        self.assertIn("🔴 Acme Archive Dataset", body)
 
 
 if __name__ == "__main__":

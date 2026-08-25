@@ -67,6 +67,19 @@ def _resolve_lookback(lookback_days: Optional[int]) -> int:
 
 def _related_datasets(hit: dict) -> str:
     """검색 결과의 소장 내용에서 데이터셋 이름과 관련 주장을 표시한다."""
+    def display(name: str, url: str = "") -> str:
+        """식별된 데이터셋을 리포트에서 눈에 띄는 빨간색으로 표시한다."""
+        safe_name = html.escape(name)
+        if url:
+            safe_url = html.escape(url, quote=True)
+            content = (
+                f'<a href="{safe_url}" style="color:#d32f2f !important;">'
+                f'{safe_name}</a>'
+            )
+        else:
+            content = safe_name
+        return f'<span style="color:#d32f2f;font-weight:700;">🔴 {content}</span>'
+
     text_fields = (
         hit.get("plain_text"), hit.get("snippet"), hit.get("text"),
         hit.get("description"), hit.get("short_description"),
@@ -75,9 +88,7 @@ def _related_datasets(hit: dict) -> str:
     complaint_text = " ".join(str(value) for value in text_fields if value)
     names = extract_dataset_names(complaint_text)
     rendered = {
-        name.casefold(): (
-            f"[{_md_escape(name)}]({dataset_url(name)})" if dataset_url(name) else _md_escape(name)
-        )
+        name.casefold(): display(name, dataset_url(name) or "")
         for name in names
     }
 
@@ -89,10 +100,10 @@ def _related_datasets(hit: dict) -> str:
         if isinstance(dataset, dict):
             name = str(dataset.get("name") or "").strip()
             url = str(dataset.get("url") or "").strip()
-            value = f"[{_md_escape(name)}]({url})" if name and url else _md_escape(name)
+            value = display(name, url)
         else:
             name = str(dataset).strip()
-            value = _md_escape(name)
+            value = display(name)
         if name:
             # 구조화 데이터는 URL 등 더 풍부한 정보를 가질 수 있으므로 같은 이름을
             # 소장 텍스트에서 이미 찾았더라도 해당 표시로 교체한다.
