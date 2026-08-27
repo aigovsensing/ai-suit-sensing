@@ -76,7 +76,7 @@ Google News RSS       CourtListener API / PACER
 | `ENABLE_EMAIL_EVENING` | Variable | 🧠 석간뉴스 이메일 발송 (기본 `1`=ON, `0`=중단) |
 | `ENABLE_EMAIL_CONSOLIDATED` | Variable | 📑 당일 소송건들 통합 정리 이메일 발송 (기본 `1`=ON, `0`=중단) |
 | `EVENING_REPORT_HOUR` | Variable | 석간뉴스 발행 기준 시각 KST (기본: `21`) |
-| `LOOKBACK_DAYS` | Variable | 뉴스/소송 수집 기간 (기본: `3`) |
+| `LOOKBACK_DAYS` | Variable | 뉴스/소송 수집 기간 (기본: `6`) |
 | `GEMINI_AISUIT_TREND_DAYS` | Variable | 조간뉴스 분석 활성화 |
 | `PREVIOUS_ITEM_DEDUP_DAYS` | Variable | 이전 이슈 중복 제거 범위 |
 | `BM25_SEMANTIC_DEDUP` | Variable | BM25 중복 제거 (`1`=ON) |

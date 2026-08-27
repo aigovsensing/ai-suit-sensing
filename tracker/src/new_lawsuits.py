@@ -62,7 +62,7 @@ def _resolve_lookback(lookback_days: Optional[int]) -> int:
     if lookback_days is not None:
         return lookback_days
     raw = (os.environ.get("LOOKBACK_DAYS") or "").strip()
-    return int(raw) if raw.isdigit() and int(raw) > 0 else 3
+    return int(raw) if raw.isdigit() and int(raw) > 0 else 6
 
 
 def _related_datasets(hit: dict) -> str:
@@ -129,7 +129,7 @@ def build_new_lawsuits_section(
 
     Args:
         report_date: 표기용 날짜(YYYY-MM-DD). 미지정 시 KST 오늘.
-        lookback_days: 신규 판단 기간(일). 미지정 시 env LOOKBACK_DAYS(기본 3).
+        lookback_days: 신규 판단 기간(일). 미지정 시 env LOOKBACK_DAYS(기본 6).
         hits: 재사용할 CourtListener 검색 결과. None 이면 자체 질의.
     """
     try:

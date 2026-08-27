@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
+import os
 import unittest
+from unittest.mock import patch
 
 from src.new_lawsuits import build_new_lawsuits_section
 
@@ -28,6 +30,12 @@ class NewLawsuitsDatasetTest(unittest.TestCase):
         self.assertIn('style="color:#d32f2f;font-weight:700;"', body)
         self.assertIn("소장문서 관련 주장:", body)
         self.assertIn("without permission", body)
+
+    def test_default_date_filed_lookback_is_six_days(self):
+        with patch.dict(os.environ, {}, clear=True):
+            body = build_new_lawsuits_section(hits=[self._hit()])
+
+        self.assertIn("Date Filed(소장 접수일) 기준 최근 6일 이내", body)
 
     def test_no_named_dataset_is_explicitly_rendered(self):
         body = build_new_lawsuits_section(lookback_days=3, hits=[self._hit()])

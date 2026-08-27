@@ -1,6 +1,6 @@
 # AI Lawsuit Radar (CourtListener/RECAP & News Extractor)
 
-AI 모델 학습을 위한 데이터 무단 사용 및 관련 저작권 소송을 추적하고 분석하는 자동화 도구입니다. 최근 설정된 기간(기본 3일) 내의 소송 정보를 **CourtListener(RECAP Archive)**와 **뉴스(RSS)**에서 수집하여 GitHub Issue와 Slack으로 통합 리포트를 제공하며, 인텔리전트한 중복 제거 로직을 통해 최신 업데이트만 깔끔하게 확인할 수 있습니다.
+AI 모델 학습을 위한 데이터 무단 사용 및 관련 저작권 소송을 추적하고 분석하는 자동화 도구입니다. 최근 설정된 기간(기본 6일) 내의 소송 정보를 **CourtListener(RECAP Archive)**와 **뉴스(RSS)**에서 수집하여 GitHub Issue와 Slack으로 통합 리포트를 제공하며, 인텔리전트한 중복 제거 로직을 통해 최신 업데이트만 깔끔하게 확인할 수 있습니다.
 
 ## 🖼️ 미리보기 (Preview)
 
@@ -43,7 +43,7 @@ AI 모델 학습을 위한 데이터 무단 사용 및 관련 저작권 소송�
  
 ### 6. 📝 계층형 댓글 구조 (Output Structure)
 - **이슈 본문**: 데이터 수집 출처 및 법률 코드 안내 등 기본 가이드 제공
-- **첫 번째 댓글**: Gemini 기반 "설정된 기간(기본 3일) 동안의 소송센싱 주요 동향 현황" 요약 리포트
+- **첫 번째 댓글**: Gemini 기반 "설정된 기간(기본 6일) 동안의 소송센싱 주요 동향 현황" 요약 리포트
 - **두 번째 댓글**: 실행 시각, 중복 제거 요약, 뉴스/소송 상세 테이블이 포함된 메인 리포트
 
 ## 🛠️ 설정 가이드
@@ -58,7 +58,7 @@ AI 모델 학습을 위한 데이터 무단 사용 및 관련 저작권 소송�
 | `GITHUB_REPO` | **Secret** | (필수) | Repository 이름 (예: `ai-suit-tracker-v02`) |
 | `GITHUB_TOKEN` | **Secret** | (필수) | GitHub API 토큰 (`secrets.GITHUB_TOKEN` 사용 가능) |
 | `COURTLISTENER_TOKEN` | **Variable** | (선택 권장) | CourtListener API v4 인증 토큰 |
-| `LOOKBACK_DAYS` | **Variable** | `3` | 며칠 전까지의 정보를 수집할지 설정 |
+| `LOOKBACK_DAYS` | **Variable** | `6` | Date Filed 기준 최근 며칠 전까지의 정보를 수집할지 설정 |
 | `ISSUE_TITLE_BASE` | **Variable** | `AI 소송 Radar` | 생성될 이슈의 기본 제목 |
 | `PREVIOUS_ITEM_DEDUP_DAYS` | **Variable** | (공백) | **설정 시 이전 날짜 이슈와 중복 체크 수행.** `3` 설정 시 설정된 일수(예: 3일) 내의 이슈 댓글들을 확인하여 중복된 소송/뉴스는 리포트에서 제외합니다. |
 | `DEBUG` | **Variable** | `0` | 1 설정 시 상세 디버그 로그 출력 |

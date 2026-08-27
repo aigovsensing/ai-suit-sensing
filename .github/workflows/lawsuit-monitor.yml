@@ -44,8 +44,8 @@ jobs:
           GEMINI_AISUIT_TREND_DAYS: ${{ vars.GEMINI_AISUIT_TREND_DAYS || secrets.GEMINI_AISUIT_TREND_DAYS }}
           # 이전 이슈 중복 제거 범위 (일수)
           PREVIOUS_ITEM_DEDUP_DAYS: ${{ vars.PREVIOUS_ITEM_DEDUP_DAYS }}
-          # 기본값(코드 내 default) = 3일
-          # Actions → Variables에 LOOKBACK_DAYS를 만들면 2 등으로 쉽게 조정 가능
+          # 기본값(코드 내 default) = 6일
+          # Actions → Variables에 LOOKBACK_DAYS를 만들면 원하는 일수로 조정 가능
           LOOKBACK_DAYS: ${{ vars.LOOKBACK_DAYS }}
           # 도켓 후보 Top3 표기(0/1). Actions → Variables에 SHOW_DOCKET_CANDIDATES 설정 가능
           SHOW_DOCKET_CANDIDATES: ${{ vars.SHOW_DOCKET_CANDIDATES }}

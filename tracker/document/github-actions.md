@@ -128,7 +128,7 @@ on:
 
 | Variable 이름 | 기본값 | 용도 |
 |--------------|--------|------|
-| `LOOKBACK_DAYS` | `3` | 뉴스/소송 수집 기간 (일) |
+| `LOOKBACK_DAYS` | `6` | 뉴스/소송 수집 기간 (일) |
 | `GEMINI_AISUIT_TREND_DAYS` | - | 조간뉴스 분석 활성화 |
 | `PREVIOUS_ITEM_DEDUP_DAYS` | - | 이전 이슈 중복 제거 범위 |
 | `ENABLE_EMAIL_SENDER` | `0` | 이메일 발송 활성화 (`1`=ON) |

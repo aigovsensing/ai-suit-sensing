@@ -38,8 +38,9 @@ def main() -> None:
         raise ValueError(f"필수 환경 변수가 누락되었습니다: {', '.join(missing)}")
 
     base_title = os.environ.get("ISSUE_TITLE_BASE", "AI학습데이터 저작권 소송 모니터링")
-    lookback_days = int(os.environ.get("LOOKBACK_DAYS", "3"))
-    # 필요 시 2로 변경: 환경변수 LOOKBACK_DAYS=2
+    # CourtListener에 Date Filed 이후 늦게 등록되는 건도 놓치지 않도록
+    # 기본 수집 범위를 6일로 유지한다. 필요하면 LOOKBACK_DAYS로 조정할 수 있다.
+    lookback_days = int(os.environ.get("LOOKBACK_DAYS", "6"))
     
     # KST 기준 날짜 생성
     now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
