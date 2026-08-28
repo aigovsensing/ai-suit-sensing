@@ -2,8 +2,10 @@ from __future__ import annotations
 """
 조간/석간 리포트 본문 조립 모듈.
 
-리포트는 항상 아래 3개 카테고리 구조로 일관되게 조립된다:
+리포트는 가장 중요한 데이터셋 현황을 첫 섹션으로 배치한 뒤
+아래 3개 카테고리 구조로 일관되게 조립된다:
 
+  4. 소송사건에 연관된 데이터셋 현황       ← 첫 번째(최우선) 섹션
   1. (Gemini) 당일 AI 학습데이터 소송 건 요약   ← gemini_md (호출부에서 전달)
   2. (Google Alert) 국내외 기사 모니터링         ← news_digest
   3. (courtlistener.com) 신규 소송 제기 현황     ← new_lawsuits
@@ -51,11 +53,11 @@ def assemble_digest(
         report_date=report_date, lookback_days=cl_lookback_days, hits=hits
     )
 
-    # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 마지막(GitHub/이메일 공통)
+    # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 먼저(GitHub/이메일 공통)
     dataset_status = build_dataset_status_section_from_hits(
         hits, header="## 4. 🧬 소송사건에 연관된 데이터셋 현황"
     )
 
-    github_body = _join(gemini_md, news_github, new_suits, dataset_status)
-    email_body = _join(gemini_md, news_email, new_suits, dataset_status)
+    github_body = _join(dataset_status, gemini_md, news_github, new_suits)
+    email_body = _join(dataset_status, gemini_md, news_email, new_suits)
     return github_body, email_body
