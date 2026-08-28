@@ -2,8 +2,10 @@ from __future__ import annotations
 """
 조간/석간 리포트 본문 조립 모듈.
 
-리포트는 항상 아래 3개 카테고리 구조로 일관되게 조립된다:
+리포트 본문에 데이터셋 현황 섹션이 있으면 가장 중요한 정보로 취급해 리포트
+제목 바로 다음에 배치한다. 나머지 카테고리는 기존 순서로 조립된다:
 
+  4. 소송사건에 연관된 데이터셋 현황          ← 본문에 있을 때 최우선 배치
   1. (Gemini) 당일 AI 학습데이터 소송 건 요약   ← gemini_md (호출부에서 전달)
   2. (Google Alert) 국내외 기사 모니터링         ← news_digest
   3. (courtlistener.com) 신규 소송 제기 현황     ← new_lawsuits
@@ -12,6 +14,7 @@ GitHub 이슈 본문과 이메일 본문은 대부분 동일하지만, "2. 기�
 처리만 다르다(GitHub=<details> 접기, 이메일=상위 N건 + 이슈 링크). 따라서 뉴스는
 한 번만 수집(collect_daily_news)한 뒤 두 버전으로 렌더링하여 두 본문을 함께 만든다.
 """
+import re
 from typing import List, Optional, Tuple
 
 from .news_digest import collect_daily_news, render_daily_news_section
@@ -21,6 +24,40 @@ from .dataset_status import build_dataset_status_section_from_hits
 
 def _join(*parts: str) -> str:
     return "\n\n---\n\n".join(p for p in parts if p and p.strip())
+
+
+_DATASET_SECTION_HEADING = re.compile(
+    r"^##\s+4\.\s+🧬\s+소송사건에\s+연관된\s+데이터셋\s+현황\s*$",
+    re.MULTILINE,
+)
+_REPORT_TITLE_HEADING = re.compile(r"^##\s+.*(?:조간뉴스|석간뉴스).*$", re.MULTILINE)
+
+
+def _prioritize_dataset_section(body: str) -> str:
+    """연관 데이터셋 현황을 리포트 제목 바로 아래로 옮긴다.
+
+    이메일 제목 추출에 사용되는 조간/석간 리포트 제목은 첫 줄에 남기고,
+    데이터셋 섹션만 나머지 본문보다 먼저 보여준다. 해당 섹션이 없거나 이미
+    최상단이면 본문을 그대로 반환한다.
+    """
+    match = _DATASET_SECTION_HEADING.search(body)
+    if not match:
+        return body
+
+    next_heading = re.search(r"^##\s+", body[match.end():], re.MULTILINE)
+    section_end = match.end() + next_heading.start() if next_heading else len(body)
+    dataset_section = body[match.start():section_end].strip("\n- ")
+    remaining = (body[:match.start()] + body[section_end:]).strip("\n- ")
+
+    title = _REPORT_TITLE_HEADING.search(remaining)
+    if not title:
+        return _join(dataset_section, remaining)
+
+    title_end = remaining.find("\n", title.end())
+    title_end = len(remaining) if title_end < 0 else title_end
+    before = remaining[:title_end].rstrip()
+    after = remaining[title_end:].strip("\n- ")
+    return _join(before, dataset_section, after)
 
 
 def assemble_digest(
@@ -51,11 +88,15 @@ def assemble_digest(
         report_date=report_date, lookback_days=cl_lookback_days, hits=hits
     )
 
-    # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 마지막(GitHub/이메일 공통)
+    # 4. 소송사건에 연관된 데이터셋 현황 — GitHub/이메일 공통
     dataset_status = build_dataset_status_section_from_hits(
         hits, header="## 4. 🧬 소송사건에 연관된 데이터셋 현황"
     )
 
-    github_body = _join(gemini_md, news_github, new_suits, dataset_status)
-    email_body = _join(gemini_md, news_email, new_suits, dataset_status)
+    github_body = _prioritize_dataset_section(
+        _join(gemini_md, news_github, new_suits, dataset_status)
+    )
+    email_body = _prioritize_dataset_section(
+        _join(gemini_md, news_email, new_suits, dataset_status)
+    )
     return github_body, email_body
