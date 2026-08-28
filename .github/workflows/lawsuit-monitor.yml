@@ -5,10 +5,15 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 23,0-8 * * *" # Business hours (KST 08:00-17:00, UTC 23:00-08:00) every 1 hour
-    - cron: "0 9-21/3 * * *" # Off-business hours (KST 18:00-06:00, UTC 09:00-21:00) every 3 hours
-                             #   ↳ 🧠 석간뉴스(KST 21:00 = UTC 12:00)는 이 스케줄에 포함되어 별도 cron 불필요
-    - cron: "0 22 * * *"     # 🗓️ 조간뉴스 발송용 (KST 07:00 = UTC 22:00)
+    # ⚠️ 예약 실행 신뢰성: GitHub Actions 는 매시 정각(minute 0)에 부하가 몰려
+    #    schedule 이벤트가 지연되거나 아예 누락(skip)되는 일이 잦다(공식 문서 권고).
+    #    → 모든 cron 을 정각이 아닌 :25 로 옮기고, 하루 1회 발행되는 🗓️조간은
+    #      슬롯을 이중화(07:10·07:50)해 한 번 누락돼도 다음 슬롯이 발행하도록 한다.
+    #      (조간/석간은 trend_already_exists 로 멱등 처리되어 중복 발행되지 않는다.)
+    - cron: "25 23,0-8 * * *" # 업무시간 KST 08:25-17:25 매시간
+    - cron: "25 9-21/3 * * *" # 그 외 KST 18:25-06:25 3시간마다 (🧠 석간 KST 21:25 = UTC 12:25 포함)
+    - cron: "10 22 * * *"     # 🗓️ 조간 1차 (KST 07:10 = UTC 22:10)
+    - cron: "50 22 * * *"     # 🗓️ 조간 2차 백업 (KST 07:50 = UTC 22:50) — 1차 누락 대비
   workflow_dispatch: {}
 
 jobs:
@@ -67,11 +72,12 @@ jobs:
           ENABLE_EMAIL_MORNING: ${{ vars.ENABLE_EMAIL_MORNING || '1' }}
           # 🧠 석간뉴스
           ENABLE_EMAIL_EVENING: ${{ vars.ENABLE_EMAIL_EVENING || '1' }}
-          # 🗓️ 조간뉴스 발행 기준 시각(KST, 0~23). 미설정 시 07시.
-          # 전용 cron(UTC 22:00 = KST 07:00)과 맞물려 하루 1회 07시에 발행된다.
+          # 🗓️ 조간뉴스 발행 기준 시각(KST, 0~23). 미설정 시 07시. 이 시각 이후
+          # '첫 실행'에서 하루 1회 발행(멱등). 전용 cron(KST 07:10/07:50 이중화) +
+          # 업무시간 매시(KST 08:25~) 실행이 있어, 일부 슬롯이 누락돼도 그날 안에 발행된다.
           MORNING_REPORT_HOUR: ${{ vars.MORNING_REPORT_HOUR || '7' }}
           # 석간뉴스(당일 요약) 발행 기준 시각(KST, 0~23). 미설정 시 21시.
-          # 오프타임 cron(UTC 12:00 = KST 21:00)과 맞물려 하루 1회 21시에 발행된다.
+          # 오프타임 cron(KST 21:25 = UTC 12:25)과 맞물려 하루 1회 저녁에 발행된다.
           EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR || '21' }}
           # '당일 뉴스 소식' 섹션의 구글 뉴스 검색 기간(일). 미설정 시 코드 기본값 2일
           DAILY_NEWS_LOOKBACK_DAYS: ${{ vars.DAILY_NEWS_LOOKBACK_DAYS }}
