@@ -16,6 +16,7 @@ from typing import List, Optional, Tuple
 
 from .news_digest import collect_daily_news, render_daily_news_section
 from .new_lawsuits import build_new_lawsuits_section
+from .dataset_status import build_dataset_status_section_from_hits
 
 
 def _join(*parts: str) -> str:
@@ -50,6 +51,11 @@ def assemble_digest(
         report_date=report_date, lookback_days=cl_lookback_days, hits=hits
     )
 
-    github_body = _join(gemini_md, news_github, new_suits)
-    email_body = _join(gemini_md, news_email, new_suits)
+    # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 마지막(GitHub/이메일 공통)
+    dataset_status = build_dataset_status_section_from_hits(
+        hits, header="## 4. 🧬 소송사건에 연관된 데이터셋 현황"
+    )
+
+    github_body = _join(gemini_md, news_github, new_suits, dataset_status)
+    email_body = _join(gemini_md, news_email, new_suits, dataset_status)
     return github_body, email_body

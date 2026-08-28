@@ -465,6 +465,17 @@ def send_consolidated_email() -> None:
         debug_log("통합 정리 이메일: 취합할 리포트 내용이 없어 발송을 건너뜁니다.")
         return
 
+    # 제일 마지막에 '소송사건에 연관된 데이터셋 현황' 섹션 추가.
+    # 통합 리포트는 구조화된 hits가 없으므로 당일 이슈 댓글 텍스트에서 데이터셋을 식별한다.
+    try:
+        from .dataset_status import build_dataset_status_section_from_text
+        combined_text = "\n\n".join(str(c.get("body") or "") for c in comments)
+        dataset_status = build_dataset_status_section_from_text(combined_text)
+        if dataset_status:
+            report = report.rstrip() + "\n\n---\n\n" + dataset_status
+    except Exception as e:
+        debug_log(f"통합 정리: 데이터셋 현황 섹션 생성 실패(무시): {e}")
+
     subject = f"[AI 학습데이터 소송] {now_kst.strftime('%Y-%m-%d')} 당일 소송건들 통합 정리 자료"
     try:
         send_email_report(subject, report, report_type="consolidated")
