@@ -154,3 +154,21 @@ def build_dataset_status_section_from_text(
         return _render(agg, header, show_cases=False)
     except Exception:
         return ""
+
+
+def build_dataset_status_section(
+    hits: Optional[List[dict]], text: str, header: str = DEFAULT_HEADER
+) -> str:
+    """구조화 검색 결과와 조립된 리포트 텍스트를 함께 사용해 누락을 줄인다.
+
+    CourtListener 검색 스니펫은 짧아서 데이터셋 명칭이 잘리는 경우가 많다. 따라서
+    소송별 매핑은 ``hits``에서 유지하되, 기사 및 Gemini 요약에 명시된 이름도 최종
+    목록에 합친다. 텍스트에서만 확인된 이름은 연관 소송 수를 추정하지 않는다.
+    """
+    try:
+        agg = _aggregate_from_hits(hits)
+        for name in extract_dataset_names(text or ""):
+            agg.setdefault(name.casefold(), {"name": name, "cases": []})
+        return _render(agg, header, show_cases=True)
+    except Exception:
+        return ""

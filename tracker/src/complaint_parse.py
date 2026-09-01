@@ -12,6 +12,19 @@ KNOWN_DATASETS = (
     ("Common Crawl", re.compile(r"\bcommon\s+crawl\b", re.I)),
     ("C4", re.compile(r"\b(?:the\s+)?c4\s+dataset\b", re.I)),
     ("RedPajama", re.compile(r"\bred\s*pajama\b", re.I)),
+    ("BookCorpus", re.compile(r"\bbook\s*corpus(?:\s*2)?\b", re.I)),
+    ("OpenWebText", re.compile(r"\bopen\s*web\s*text(?:\s*2)?\b", re.I)),
+    ("WebText", re.compile(r"\bweb\s*text\b", re.I)),
+    ("LibGen", re.compile(r"\b(?:libgen|library\s+genesis)\b", re.I)),
+    ("Z-Library", re.compile(r"\bz[\s-]*library\b", re.I)),
+    ("Bibliotik", re.compile(r"\bbibliotik\b", re.I)),
+    ("Anna's Archive", re.compile(r"\banna(?:'|’)?s\s+archive\b", re.I)),
+    ("Project Gutenberg", re.compile(r"\bproject\s+gutenberg\b", re.I)),
+    ("Google Books", re.compile(r"\bgoogle\s+books\b", re.I)),
+    ("MS COCO", re.compile(r"\b(?:ms\s+)?coco(?:\s+dataset)?\b", re.I)),
+    ("ImageNet", re.compile(r"\bimage\s*net\b", re.I)),
+    ("Conceptual Captions", re.compile(r"\bconceptual\s+captions\b", re.I)),
+    ("SBU Captions", re.compile(r"\bsbu\s+captions\b", re.I)),
 )
 
 DATASET_URLS = {
@@ -21,6 +34,14 @@ DATASET_URLS = {
     "LAION-400M": "https://laion.ai/blog/laion-400-open-dataset/",
     "Common Crawl": "https://commoncrawl.org/",
     "RedPajama": "https://github.com/togethercomputer/RedPajama-Data",
+    "BookCorpus": "https://huggingface.co/datasets/bookcorpus/bookcorpus",
+    "OpenWebText": "https://skylion007.github.io/OpenWebTextCorpus/",
+    "Project Gutenberg": "https://www.gutenberg.org/",
+    "Google Books": "https://books.google.com/",
+    "MS COCO": "https://cocodataset.org/",
+    "ImageNet": "https://www.image-net.org/",
+    "Conceptual Captions": "https://ai.google.com/research/ConceptualCaptions/",
+    "SBU Captions": "https://www.cs.virginia.edu/~vicente/sbucaptions/",
 }
 
 CAUSE_PATTERNS = [
@@ -85,12 +106,22 @@ def extract_dataset_names(text: str) -> List[str]:
 
     # 알려지지 않은 ``Name Dataset`` 표기도 보존한다. 일반명인 "the dataset"이나
     # "training dataset"은 특정 데이터셋을 가리키지 않으므로 제외한다.
-    generic = re.compile(r"\b([A-Z][A-Za-z0-9_.-]*(?:\s+[A-Z][A-Za-z0-9_.-]*){0,2}\s+Dataset)\b")
+    generic = re.compile(
+        r"\b([A-Z][A-Za-z0-9_.-]*(?:\s+[A-Z][A-Za-z0-9_.-]*){0,3}\s+"
+        r"(?:[Dd]ata[\s-]?[Ss]et|Data\s+Set))\b",
+    )
     ignored = {"the dataset", "a dataset", "training dataset", "source dataset", "image dataset", "text dataset"}
     for match in generic.finditer(text):
         name = re.sub(r"\s+", " ", match.group(1)).strip()
+        name = re.sub(r"data\s+set$", "Dataset", name, flags=re.I)
         name = re.sub(r"^(?:The|A)\s+", "", name)
-        if name.casefold() not in ignored and not any(name.casefold() == item.casefold() for item in found):
+        base_name = re.sub(r"\s+Dataset$", "", name, flags=re.I)
+        duplicates_known_name = any(base_name.casefold() == item.casefold() for item in found)
+        if (
+            name.casefold() not in ignored
+            and not duplicates_known_name
+            and not any(name.casefold() == item.casefold() for item in found)
+        ):
             found.append(name)
     return found
 

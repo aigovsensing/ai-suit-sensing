@@ -16,7 +16,7 @@ from typing import List, Optional, Tuple
 
 from .news_digest import collect_daily_news, render_daily_news_section
 from .new_lawsuits import build_new_lawsuits_section
-from .dataset_status import build_dataset_status_section_from_hits
+from .dataset_status import build_dataset_status_section
 
 
 def _join(*parts: str) -> str:
@@ -52,8 +52,13 @@ def assemble_digest(
     )
 
     # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 마지막(GitHub/이메일 공통)
-    dataset_status = build_dataset_status_section_from_hits(
-        hits, header="## 4. 🧬 소송사건에 연관된 데이터셋 현황"
+    # 검색 스니펫뿐 아니라 Gemini/기사 본문도 함께 검사한다. CourtListener 스니펫에
+    # 데이터셋 이름이 잘려 있더라도 앞 섹션에 명시된 이름을 최종 현황에서 보존한다.
+    dataset_source_text = _join(gemini_md, news_github, new_suits)
+    dataset_status = build_dataset_status_section(
+        hits,
+        dataset_source_text,
+        header="## 4. 🧬 소송사건에 연관된 데이터셋 현황",
     )
 
     github_body = _join(gemini_md, news_github, new_suits, dataset_status)
