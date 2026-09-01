@@ -117,7 +117,7 @@ on:
 | `SLACK_WEBHOOK_URL` | Slack 알림 웹훅 URL |
 | `COURTLISTENER_TOKEN` | CourtListener API 토큰 |
 | `GEMINI_API_KEY` | Google Gemini API 키 |
-| `SMTP_PASS` | Gmail SMTP 앱 비밀번호 |
+| `GMAIL_APP_PASSWORD` | Gmail SMTP 앱 비밀번호 |
 
 ### GitHub Variables (비민감 설정)
 

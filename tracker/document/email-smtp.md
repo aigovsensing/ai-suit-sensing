@@ -30,7 +30,7 @@ Gmail의 SMTP(Simple Mail Transfer Protocol) 서버를 통해 외부 프로그�
 5. **"생성"** 클릭 → 16자리 비밀번호 발급
 6. GitHub Secrets에 등록:
    ```
-   Secret 이름: SMTP_PASS
+   Secret 이름: GMAIL_APP_PASSWORD
    Secret 값:   xxxx xxxx xxxx xxxx   (공백 포함 그대로 사용 가능)
    ```
 
@@ -128,7 +128,7 @@ def markdown_to_html(text: str) -> str:
         ↓
 [email_sender.py]
   └─ email.json 읽기 (sender, receivers)
-  └─ SMTP_PASS 환경변수 읽기
+  └─ GMAIL_APP_PASSWORD 환경변수 읽기
   └─ Markdown → HTML 변환
   └─ HTML 이메일 템플릿 적용
   └─ multipart/alternative 메시지 구성
@@ -208,7 +208,7 @@ def markdown_to_html(text: str) -> str:
 # scratch/test_email.py
 import os
 os.environ["ENABLE_EMAIL_SENDER"] = "1"
-os.environ["SMTP_PASS"] = "your-app-password"
+os.environ["GMAIL_APP_PASSWORD"] = "your-app-password"
 
 from src.email_sender import send_email_report
 

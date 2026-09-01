@@ -70,7 +70,7 @@ Google News RSS       CourtListener API / PACER
 | `SLACK_WEBHOOK_URL` | Secret | Slack 알림 웹훅 URL |
 | `COURTLISTENER_TOKEN` | Secret | CourtListener API 토큰 |
 | `GEMINI_API_KEY` | Secret | Gemini AI API 키 |
-| `SMTP_PASS` | Secret | Gmail 앱 비밀번호 |
+| `GMAIL_APP_PASSWORD` | Secret | Gmail 앱 비밀번호 |
 | `ENABLE_EMAIL_SENDER` | Variable | 이메일 발송 마스터 ON/OFF (`1`=ON) |
 | `ENABLE_EMAIL_MORNING` | Variable | 🗓️ 조간뉴스 이메일 발송 (기본 `1`=ON, `0`=중단) |
 | `ENABLE_EMAIL_EVENING` | Variable | 🧠 석간뉴스 이메일 발송 (기본 `1`=ON, `0`=중단) |

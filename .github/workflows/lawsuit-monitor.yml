@@ -81,8 +81,9 @@ jobs:
           EVENING_REPORT_HOUR: ${{ vars.EVENING_REPORT_HOUR || '21' }}
           # '당일 뉴스 소식' 섹션의 구글 뉴스 검색 기간(일). 미설정 시 코드 기본값 2일
           DAILY_NEWS_LOOKBACK_DAYS: ${{ vars.DAILY_NEWS_LOOKBACK_DAYS }}
-          # 이메일 발송용 SMTP 앱 비밀번호
-          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
+          # 이메일 발송용 Gmail 앱 비밀번호 (Secret).
+          # 신규 이름 GMAIL_APP_PASSWORD 우선, 구 이름(SMTP_PASS/SMTP_PASSWORD)은 전환기 폴백.
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD || secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
         run: |
           python -m src.run
 

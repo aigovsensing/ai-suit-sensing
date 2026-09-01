@@ -348,10 +348,15 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
         )
         return
 
-    # SMTP 앱 비밀번호 획득 (환경 변수 - GitHub Secrets)
-    smtp_password = os.environ.get("SMTP_PASS") or os.environ.get("SMTP_PASSWORD")
+    # Gmail 앱 비밀번호 획득 (환경 변수 - GitHub Secrets)
+    # 신규 이름 GMAIL_APP_PASSWORD 우선, 구 이름(SMTP_PASS/SMTP_PASSWORD)은 전환기 폴백.
+    smtp_password = (
+        os.environ.get("GMAIL_APP_PASSWORD")
+        or os.environ.get("SMTP_PASS")
+        or os.environ.get("SMTP_PASSWORD")
+    )
     if not smtp_password:
-        print("[ERROR] SMTP 비밀번호(SMTP_PASS 환경변수)가 설정되지 않았습니다.")
+        print("[ERROR] Gmail 앱 비밀번호(GMAIL_APP_PASSWORD 환경변수)가 설정되지 않았습니다.")
         return
 
     debug_log(f"이메일 발송 작업을 시작합니다. (타입: {report_type}, 수신인: {clean_receivers})")

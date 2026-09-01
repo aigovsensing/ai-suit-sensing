@@ -55,7 +55,8 @@ jobs:
           # 📑 당일 소송건들 통합 정리 리포트 타입별 발송 스위치
           # (기본 '1'=활성, '0'으로 설정 시 통합 정리 이메일만 발송 중단)
           ENABLE_EMAIL_CONSOLIDATED: ${{ vars.ENABLE_EMAIL_CONSOLIDATED || '1' }}
-          # 이메일 발송용 SMTP 앱 비밀번호
-          SMTP_PASS: ${{ secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
+          # 이메일 발송용 Gmail 앱 비밀번호 (Secret).
+          # 신규 이름 GMAIL_APP_PASSWORD 우선, 구 이름(SMTP_PASS/SMTP_PASSWORD)은 전환기 폴백.
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD || secrets.SMTP_PASS || secrets.SMTP_PASSWORD }}
         run: |
           python -m src.run consolidated-email

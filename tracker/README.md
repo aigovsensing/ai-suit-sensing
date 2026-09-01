@@ -132,7 +132,7 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 #### 🔒 Repository Secrets (보안 정보)
 | Key | 필수여부 | 설명 |
 | --- | --- | --- |
-| `SMTP_PASS` | **필수** | 발송용 Gmail 계정의 **16자리 앱 비밀번호 (App Password)** |
+| `GMAIL_APP_PASSWORD` | **필수** | 발송용 Gmail 계정의 **16자리 앱 비밀번호 (App Password)** |
 
 > 💡 **Gmail 앱 비밀번호 발급 방법:**
 > 1. 발송용 Gmail 계정의 **구글 계정 관리 -> 보안** 페이지로 이동합니다.
@@ -143,7 +143,7 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 ---
 
 ### 2️⃣ 설정 파일 관리 ([email.json](./data/email.json))
-비밀번호(`SMTP_PASS`)를 제외한 모든 SMTP 연결 정보 및 수신자 리스트는 유지보수의 용이성을 위해 레포지토리 내의 **[email.json](./data/email.json)** 파일에서 일괄 관리합니다.
+비밀번호(`GMAIL_APP_PASSWORD`)를 제외한 모든 SMTP 연결 정보 및 수신자 리스트는 유지보수의 용이성을 위해 레포지토리 내의 **[email.json](./data/email.json)** 파일에서 일괄 관리합니다.
 
 ```json
 {
