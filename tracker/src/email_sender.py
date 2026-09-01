@@ -294,6 +294,64 @@ def _resolve_receivers(config: dict, report_type: str | None) -> list:
     return result
 
 
+def _mask_secret(text) -> str:
+    """오류 메시지에 앱 비밀번호가 섞여 노출되지 않도록 마스킹하고 길이를 제한한다."""
+    out = str(text or "")
+    for key in ("GMAIL_APP_PASSWORD", "SMTP_PASS", "SMTP_PASSWORD"):
+        val = os.environ.get(key)
+        if val and val in out:
+            out = out.replace(val, "***")
+    return out[:1500]
+
+
+def _report_email_failure_to_github(report_type, subject, recipients, error) -> None:
+    """
+    이메일 전송 실패 정보를 전용 GitHub 이슈에 댓글로 누적 기록한다.
+
+    Gmail SMTP(앱 비밀번호 GMAIL_APP_PASSWORD) 인증/네트워크 문제로 발송이 실패하면,
+    운영자가 놓치지 않도록 실패 시각·리포트 종류·수신자·오류 내용을 이슈에 남긴다.
+    기록 자체가 파이프라인을 멈추지 않도록 모든 예외를 흡수한다.
+    """
+    owner = os.environ.get("GITHUB_OWNER")
+    repo = os.environ.get("GITHUB_REPO")
+    token = os.environ.get("GITHUB_TOKEN")
+    if not all([owner, repo, token]):
+        debug_log("이메일 실패 GitHub 이슈 등록 건너뜀: GITHUB_OWNER/REPO/TOKEN 미설정")
+        return
+    try:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        from .github_issue import find_or_create_issue, create_comment
+
+        issue_no = find_or_create_issue(
+            owner, repo, token,
+            title="🚨 이메일 전송 실패 로그 (Email Delivery Failures)",
+            label="email-failure",
+        )
+        ts = datetime.now(ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
+        recips = list(recipients or [])
+        pw_source = next(
+            (k for k in ("GMAIL_APP_PASSWORD", "SMTP_PASS", "SMTP_PASSWORD") if os.environ.get(k)),
+            "(미설정)",
+        )
+        body = (
+            "## ❌ 이메일 전송 실패\n\n"
+            f"- **발생 시각**: {ts}\n"
+            f"- **리포트 종류**: {report_type or '(미지정)'}\n"
+            f"- **제목**: {subject or '(없음)'}\n"
+            f"- **수신자({len(recips)}명)**: {', '.join(recips) if recips else '(미확인)'}\n"
+            f"- **사용한 비밀번호 시크릿**: `{pw_source}`\n"
+            f"- **오류 내용**:\n\n```\n{_mask_secret(error)}\n```\n\n"
+            "> 🔑 Gmail SMTP 인증 실패라면 `GMAIL_APP_PASSWORD` 시크릿(16자리 앱 비밀번호)의 "
+            "유효성, 발송 계정의 2단계 인증·앱 비밀번호 재발급 여부, 그리고 시크릿이 "
+            "repo Settings → Secrets and variables → Actions 에 정확히 등록됐는지 확인하세요."
+        )
+        create_comment(owner, repo, token, issue_no, body)
+        debug_log(f"이메일 전송 실패를 GitHub 이슈 #{issue_no}에 기록했습니다.")
+    except Exception as ge:  # noqa: BLE001 - 기록 실패가 파이프라인을 멈추지 않도록
+        debug_log(f"이메일 실패 GitHub 이슈 등록 실패(무시): {ge}")
+
+
 def send_email_report(subject: str, content: str, report_type: str | None = None) -> None:
     """
     Gmail SMTP를 사용하여 email.json에 등록된 설정 및 수신자들로 이메일을 발송합니다.
@@ -356,7 +414,9 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
         or os.environ.get("SMTP_PASSWORD")
     )
     if not smtp_password:
-        print("[ERROR] Gmail 앱 비밀번호(GMAIL_APP_PASSWORD 환경변수)가 설정되지 않았습니다.")
+        msg = "Gmail 앱 비밀번호(GMAIL_APP_PASSWORD 환경변수)가 설정되지 않았습니다."
+        print(f"[ERROR] {msg}")
+        _report_email_failure_to_github(report_type, subject, clean_receivers, msg)
         return
 
     debug_log(f"이메일 발송 작업을 시작합니다. (타입: {report_type}, 수신인: {clean_receivers})")
@@ -393,3 +453,6 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
             debug_log(f"이메일 전송 성공: {clean_receivers}")
     except Exception as e:
         print(f"[ERROR] 이메일 전송 중 SMTP 서버 오류 발생: {e}")
+        _report_email_failure_to_github(
+            report_type, subject, clean_receivers, f"{type(e).__name__}: {e}"
+        )
