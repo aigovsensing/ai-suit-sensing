@@ -95,6 +95,11 @@ def main() -> None:
         merged_docs[key] = d
     cl_docs = list(merged_docs.values())
 
+    # 검색 스니펫만으로는 긴 소장 뒤쪽의 데이터셋 주장을 놓치므로, 실제 PDF에서
+    # 추출한 본문을 동일 도켓 hit에 결합해 신규 소송/데이터셋 현황 생성에 사용한다.
+    from .dataset_status import enrich_hits_with_complaint_documents
+    hits = enrich_hits_with_complaint_documents(hits, cl_docs)
+
     docket_case_count = len(cl_cases)
     
     # =====================================================

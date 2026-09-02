@@ -84,6 +84,7 @@ def _related_datasets(hit: dict) -> str:
         hit.get("plain_text"), hit.get("snippet"), hit.get("text"),
         hit.get("description"), hit.get("short_description"),
         hit.get("extracted_ai_snippet"), hit.get("pdf_text_snippet"),
+        hit.get("complaint_pdf_text"),
     )
     complaint_text = " ".join(str(value) for value in text_fields if value)
     names = extract_dataset_names(complaint_text)

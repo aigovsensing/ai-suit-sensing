@@ -50,6 +50,7 @@ def _case_text(hit: dict) -> str:
         hit.get("plain_text"), hit.get("snippet"), hit.get("text"),
         hit.get("description"), hit.get("short_description"),
         hit.get("extracted_ai_snippet"), hit.get("pdf_text_snippet"),
+        hit.get("complaint_pdf_text"),
     )
     return " ".join(str(v) for v in fields if v)
 
@@ -65,6 +66,51 @@ def _names_for_hit(hit: dict) -> List[str]:
         if nm and not any(nm.casefold() == x.casefold() for x in names):
             names.append(nm)
     return names
+
+
+def enrich_hits_with_complaint_documents(
+    hits: Optional[List[dict]], documents: Optional[List[object]]
+) -> List[dict]:
+    """PDF에서 추출한 소장 본문을 같은 도켓의 검색 결과에 결합한다.
+
+    CourtListener 검색 결과에는 소장 PDF 본문이 없는 경우가 많다. 이후 단계가 실제
+    소장 내용을 기준으로 데이터셋을 판별할 수 있도록 도켓 ID가 같은 문서의 추출
+    텍스트를 별도 필드에 보존한다. 원본 hit 객체는 변경하지 않는다.
+    """
+    text_by_docket: Dict[object, List[str]] = {}
+    for document in documents or []:
+        docket_id = getattr(document, "docket_id", None)
+        text = str(getattr(document, "pdf_text_snippet", "") or "").strip()
+        if docket_id is not None and text:
+            text_by_docket.setdefault(docket_id, []).append(text)
+
+    enriched = []
+    matched_dockets = set()
+    for hit in hits or []:
+        item = dict(hit)
+        docket_id = hit.get("docket_id")
+        texts = text_by_docket.get(docket_id, [])
+        if texts:
+            item["complaint_pdf_text"] = " ".join(dict.fromkeys(texts))
+            matched_dockets.add(docket_id)
+        enriched.append(item)
+
+    # 뉴스의 도켓번호로 추가 조회한 소장은 최초 검색 hits에 없을 수 있다. 이 문서도
+    # 데이터셋 현황에서 빠지지 않도록 최소한의 hit 형태로 변환한다.
+    for document in documents or []:
+        docket_id = getattr(document, "docket_id", None)
+        text = str(getattr(document, "pdf_text_snippet", "") or "").strip()
+        if docket_id is None or not text or docket_id in matched_dockets:
+            continue
+        enriched.append({
+            "docket_id": docket_id,
+            "caseName": getattr(document, "case_name", "") or "미확인",
+            "docketNumber": getattr(document, "docket_number", "") or "",
+            "dateFiled": getattr(document, "date_filed", "") or "",
+            "complaint_pdf_text": " ".join(dict.fromkeys(text_by_docket[docket_id])),
+        })
+        matched_dockets.add(docket_id)
+    return enriched
 
 
 def _aggregate_from_hits(hits: Optional[List[dict]]) -> Dict[str, dict]:
