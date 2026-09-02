@@ -3,7 +3,11 @@ from types import SimpleNamespace
 
 from src.courtlistener import CLDocument
 from src.complaint_parse import extract_dataset_names
-from src.dataset_status import build_dataset_status_section, enrich_hits_with_complaint_documents
+from src.dataset_status import (
+    build_dataset_status_section,
+    build_dataset_status_section_from_comments,
+    enrich_hits_with_complaint_documents,
+)
 
 
 class DatasetStatusTest(unittest.TestCase):
@@ -96,6 +100,39 @@ class DatasetStatusTest(unittest.TestCase):
         section = build_dataset_status_section([], "An article mentions LAION-5B.")
 
         self.assertIn("기사/요약에서 식별(소장 원문 미확인)", section)
+
+    def test_consolidated_dataset_links_back_to_source_comment(self):
+        section = build_dataset_status_section_from_comments([{
+            "body": "The report says Books3 was used for training.",
+            "html_url": "https://github.com/example/repo/issues/1#issuecomment-10",
+        }])
+
+        self.assertIn(
+            "[출처](https://github.com/example/repo/issues/1#issuecomment-10)", section
+        )
+        self.assertIn("Books3 was used for training", section)
+
+    def test_consolidated_dataset_prefers_complaint_link_in_row(self):
+        section = build_dataset_status_section_from_comments([{
+            "body": (
+                "| 🔴 LibGen | [소장 원문](https://www.courtlistener.com/docket/1/doc/) "
+                "| [원본 댓글](https://github.com/example/repo/issues/1#issuecomment-10) |"
+            ),
+            "html_url": "https://github.com/example/repo/issues/1#issuecomment-10",
+        }])
+
+        self.assertIn(
+            "[출처](https://www.courtlistener.com/docket/1/doc/)", section
+        )
+
+    def test_multiple_source_links_are_preserved(self):
+        section = build_dataset_status_section_from_comments([
+            {"body": "Books3 appears in report one.", "html_url": "https://example.test/1"},
+            {"body": "Books3 appears in report two.", "html_url": "https://example.test/2"},
+        ])
+
+        self.assertIn("[출처](https://example.test/1)", section)
+        self.assertIn("[출처](https://example.test/2)", section)
 
 
 if __name__ == "__main__":

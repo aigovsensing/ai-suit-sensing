@@ -197,6 +197,26 @@ def _merge_aggregates(target: Dict[str, dict], source: Dict[str, dict]) -> None:
                 slot["evidence"].append(proof)
 
 
+def _render_evidence(evidence: List[tuple]) -> str:
+    """소장 링크를 우선해 서로 다른 출처를 최대 3개까지 표시한다."""
+    ordered = sorted(
+        evidence,
+        key=lambda item: (0 if "courtlistener.com" in str(item[3]) else 1),
+    )
+    rendered = []
+    seen_urls = set()
+    for _, source, excerpt, source_url in ordered:
+        if source_url and source_url in seen_urls:
+            continue
+        if source_url:
+            seen_urls.add(source_url)
+        source_label = f"[{source}]({source_url})" if source_url else source
+        rendered.append(f"{source_label}: “{_cell(excerpt)}”")
+        if len(rendered) == 3:
+            break
+    return "<br>".join(rendered)
+
+
 def _render(agg: Dict[str, dict], header: str, show_cases: bool) -> str:
     if not agg:
         return (
@@ -225,9 +245,7 @@ def _render(agg: Dict[str, dict], header: str, show_cases: bool) -> str:
                 shown = "-"
             evidence = s.get("evidence") or []
             if evidence:
-                _, source, excerpt, source_url = evidence[0]
-                source_label = f"[{source}]({source_url})" if source_url else source
-                proof = f"{source_label}: “{_cell(excerpt)}”"
+                proof = _render_evidence(evidence)
             else:
                 proof = "기사/요약에서 식별(소장 원문 미확인)"
             lines.append(
@@ -267,6 +285,49 @@ def build_dataset_status_section_from_text(
         for nm in names:
             agg.setdefault(nm.casefold(), {"name": nm, "cases": []})
         return _render(agg, header, show_cases=False)
+    except Exception:
+        return ""
+
+
+def _line_for_name(text: str, name: str) -> str:
+    """댓글에서 데이터셋 이름이 들어간 한 줄을 추적용 근거로 고른다."""
+    for line in (text or "").splitlines():
+        plain = html.unescape(re.sub(r"<[^>]+>", " ", line))
+        if re.search(re.escape(name), plain, re.I):
+            return re.sub(r"\s+", " ", plain).strip(" |")
+    return ""
+
+
+def _source_link_from_line(line: str, fallback: str) -> str:
+    """표 행의 소장/사건 링크를 우선하고, 없으면 GitHub 댓글 링크를 사용한다."""
+    links = re.findall(r"\[[^]]*\]\((https?://[^)]+)\)", line or "", re.I)
+    preferred = next(
+        (url for url in links if "courtlistener.com" in url or "/complaint" in url.lower()),
+        None,
+    )
+    return preferred or (links[0] if links else fallback)
+
+
+def build_dataset_status_section_from_comments(
+    comments: Optional[Sequence[dict]], header: str = DEFAULT_HEADER
+) -> str:
+    """통합 리포트의 데이터셋마다 원본 댓글/소장으로 돌아갈 출처 링크를 붙인다."""
+    try:
+        agg: Dict[str, dict] = {}
+        for comment in comments or []:
+            body = str(comment.get("body") or "")
+            comment_url = str(comment.get("html_url") or comment.get("url") or "")
+            for name in extract_dataset_names(body):
+                slot = agg.setdefault(
+                    name.casefold(), {"name": name, "cases": [], "evidence": []}
+                )
+                line = _line_for_name(body, name)
+                source_url = _source_link_from_line(line, comment_url)
+                excerpt = line[:180].rstrip()
+                proof = ("", "출처", excerpt, source_url)
+                if proof not in slot["evidence"]:
+                    slot["evidence"].append(proof)
+        return _render(agg, header, show_cases=True)
     except Exception:
         return ""
 

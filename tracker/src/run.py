@@ -473,11 +473,11 @@ def send_consolidated_email() -> None:
         return
 
     # 제일 마지막에 '소송사건에 연관된 데이터셋 현황' 섹션 추가.
-    # 통합 리포트는 구조화된 hits가 없으므로 당일 이슈 댓글 텍스트에서 데이터셋을 식별한다.
+    # 통합 리포트는 당일 이슈 댓글에서 데이터셋을 식별하되, 각 항목에 원본 댓글이나
+    # 댓글 속 소장 링크를 붙여 사용자가 식별 근거를 역추적할 수 있게 한다.
     try:
-        from .dataset_status import build_dataset_status_section_from_text
-        combined_text = "\n\n".join(str(c.get("body") or "") for c in comments)
-        dataset_status = build_dataset_status_section_from_text(combined_text)
+        from .dataset_status import build_dataset_status_section_from_comments
+        dataset_status = build_dataset_status_section_from_comments(comments)
         if dataset_status:
             report = report.rstrip() + "\n\n---\n\n" + dataset_status
     except Exception as e:
