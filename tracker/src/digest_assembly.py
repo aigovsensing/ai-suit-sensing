@@ -12,7 +12,7 @@ GitHub 이슈 본문과 이메일 본문은 대부분 동일하지만, "2. 기�
 처리만 다르다(GitHub=<details> 접기, 이메일=상위 N건 + 이슈 링크). 따라서 뉴스는
 한 번만 수집(collect_daily_news)한 뒤 두 버전으로 렌더링하여 두 본문을 함께 만든다.
 """
-from typing import List, Optional, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from .news_digest import collect_daily_news, render_daily_news_section
 from .new_lawsuits import build_new_lawsuits_section
@@ -29,6 +29,7 @@ def assemble_digest(
     cl_lookback_days: Optional[int] = None,
     issue_url: Optional[str] = None,
     hits: Optional[List[dict]] = None,
+    complaint_documents: Optional[Sequence[object]] = None,
 ) -> Tuple[str, str]:
     """
     (github_body, email_body) 튜플을 반환한다.
@@ -40,6 +41,7 @@ def assemble_digest(
         cl_lookback_days: "3. 신규 소송"의 Date Filed 기준 기간(일). 미지정 시 env LOOKBACK_DAYS.
         issue_url: 이메일 "2." 섹션에서 '전체 목록'을 안내할 GitHub 이슈 URL.
         hits: run.py 등이 이미 수행한 CourtListener 검색 결과. 있으면 재사용해 중복 호출 방지.
+        complaint_documents: PDF에서 본문을 추출한 소장 문서. 데이터셋의 원문 근거로 사용.
     """
     # 2. 뉴스 모니터링 — 한 번 수집 → GitHub/이메일 두 버전 렌더
     news_data = collect_daily_news(report_date=report_date)
@@ -59,6 +61,7 @@ def assemble_digest(
         hits,
         dataset_source_text,
         header="## 4. 🧬 소송사건에 연관된 데이터셋 현황",
+        documents=complaint_documents,
     )
 
     github_body = _join(gemini_md, news_github, new_suits, dataset_status)

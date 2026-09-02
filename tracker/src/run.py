@@ -235,6 +235,7 @@ def main() -> None:
                         cl_lookback_days=lookback_days,
                         issue_url=issue_url,
                         hits=hits,
+                        complaint_documents=cl_docs,
                     )
                     create_comment(owner, repo, gh_token, issue_no, github_body)
                     debug_log(f"Issue #{issue_no} Gemini 동향 요약 댓글 업로드 완료")
@@ -301,6 +302,7 @@ def main() -> None:
                         cl_lookback_days=lookback_days,
                         issue_url=issue_url,
                         hits=hits,
+                        complaint_documents=cl_docs,
                     )
                     create_comment(owner, repo, gh_token, issue_no, github_body)
                     debug_log(f"Issue #{issue_no} 석간뉴스(당일 저녁) 댓글 업로드 완료")

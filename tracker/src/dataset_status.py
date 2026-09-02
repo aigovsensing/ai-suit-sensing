@@ -14,7 +14,9 @@ from __future__ import annotations
     데이터셋 이름만 추출 → 목록으로 제공(연관 소송 개별 매핑은 생략).
 """
 import html
-from typing import Dict, List, Optional
+import re
+from dataclasses import asdict, is_dataclass
+from typing import Dict, List, Optional, Sequence
 
 from .complaint_parse import extract_dataset_names, dataset_url
 
@@ -53,6 +55,22 @@ def _case_text(hit: dict) -> str:
         hit.get("complaint_pdf_text"),
     )
     return " ".join(str(v) for v in fields if v)
+
+
+def _evidence(text: str, name: str, max_len: int = 180) -> str:
+    """이름이 등장하는 문장/문맥을 표에 넣을 짧은 근거로 반환한다."""
+    clean = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
+    clean = re.sub(r"\s+", " ", clean).strip()
+    match = re.search(re.escape(name), clean, re.I)
+    if not match:
+        return ""
+    previous_stop = clean.rfind(". ", 0, match.start())
+    start = previous_stop + 2 if previous_stop >= 0 else 0
+    end = clean.find(". ", match.end())
+    if end < 0:
+        end = min(len(clean), match.end() + 100)
+    excerpt = clean[start:end + (1 if end < len(clean) else 0)].strip()
+    return excerpt if len(excerpt) <= max_len else excerpt[:max_len - 1].rstrip() + "…"
 
 
 def _names_for_hit(hit: dict) -> List[str]:
@@ -113,6 +131,20 @@ def enrich_hits_with_complaint_documents(
     return enriched
 
 
+def _add_case_names(
+    agg: Dict[str, dict], names: List[str], case_name: str, case_url: str,
+    source: str, source_url: str, text: str,
+) -> None:
+    for name in names:
+        slot = agg.setdefault(name.casefold(), {"name": name, "cases": [], "evidence": []})
+        if not any(cn == case_name for cn, _ in slot["cases"]):
+            slot["cases"].append((case_name, case_url))
+        proof = _evidence(text, name)
+        evidence_key = (case_name, source, proof)
+        if proof and not any(item[:3] == evidence_key for item in slot["evidence"]):
+            slot["evidence"].append((*evidence_key, source_url))
+
+
 def _aggregate_from_hits(hits: Optional[List[dict]]) -> Dict[str, dict]:
     """데이터셋(casefold) -> {'name', 'cases': [(case_name, url), ...]} 집계."""
     agg: Dict[str, dict] = {}
@@ -130,11 +162,39 @@ def _aggregate_from_hits(hits: Optional[List[dict]]) -> Dict[str, dict]:
         case_name = (h.get("caseName") or "미확인").strip()
         rel = h.get("docket_absolute_url") or ""
         curl = (BASE + rel) if isinstance(rel, str) and rel.startswith("/") else rel
-        for nm in names:
-            slot = agg.setdefault(nm.casefold(), {"name": nm, "cases": []})
-            if not any(cn == case_name for cn, _ in slot["cases"]):
-                slot["cases"].append((case_name, curl))
+        _add_case_names(agg, names, case_name, curl, "소장 검색문", curl, _case_text(h))
     return agg
+
+
+def _aggregate_from_documents(documents: Optional[Sequence[object]]) -> Dict[str, dict]:
+    """다운로드·파싱된 소장 문서에서 데이터셋과 사건별 근거 문맥을 집계한다."""
+    agg: Dict[str, dict] = {}
+    for document in documents or []:
+        if is_dataclass(document):
+            doc = asdict(document)
+        elif isinstance(document, dict):
+            doc = document
+        else:
+            continue
+        text = " ".join(str(doc.get(k) or "") for k in ("pdf_text_snippet", "extracted_ai_snippet"))
+        names = extract_dataset_names(text)
+        if not names:
+            continue
+        case_name = str(doc.get("case_name") or doc.get("caseName") or "미확인").strip()
+        case_url = str(doc.get("document_url") or doc.get("pdf_url") or "").strip()
+        _add_case_names(agg, names, case_name, case_url, "소장 원문", case_url, text)
+    return agg
+
+
+def _merge_aggregates(target: Dict[str, dict], source: Dict[str, dict]) -> None:
+    for key, incoming in source.items():
+        slot = target.setdefault(key, {"name": incoming["name"], "cases": [], "evidence": []})
+        for case in incoming.get("cases", []):
+            if case not in slot["cases"]:
+                slot["cases"].append(case)
+        for proof in incoming.get("evidence", []):
+            if proof not in slot["evidence"]:
+                slot["evidence"].append(proof)
 
 
 def _render(agg: Dict[str, dict], header: str, show_cases: bool) -> str:
@@ -148,8 +208,8 @@ def _render(agg: Dict[str, dict], header: str, show_cases: bool) -> str:
     lines: List[str] = [header, "", _INTRO, "", f"* **식별된 데이터셋: {len(rows)}종**", ""]
 
     if show_cases:
-        lines.append("| 데이터셋 | 연관 소송 수 | 공식 링크 | 연관 소송 |")
-        lines.append("|---|---|---|---|")
+        lines.append("| 데이터셋 | 연관 소송 수 | 확인 근거 | 공식 링크 | 연관 소송 |")
+        lines.append("|---|---|---|---|---|")
         for s in rows:
             url = dataset_url(s["name"])
             link = f"[🔗 원본]({url})" if url else "-"
@@ -163,7 +223,16 @@ def _render(agg: Dict[str, dict], header: str, show_cases: bool) -> str:
                     shown += f"<br>… 외 {n - 5}건"
             else:
                 shown = "-"
-            lines.append(f"| {_dataset_badge(s['name'])} | {n or '-'} | {link} | {shown} |")
+            evidence = s.get("evidence") or []
+            if evidence:
+                _, source, excerpt, source_url = evidence[0]
+                source_label = f"[{source}]({source_url})" if source_url else source
+                proof = f"{source_label}: “{_cell(excerpt)}”"
+            else:
+                proof = "기사/요약에서 식별(소장 원문 미확인)"
+            lines.append(
+                f"| {_dataset_badge(s['name'])} | {n or '-'} | {proof} | {link} | {shown} |"
+            )
     else:
         lines.append("| 데이터셋 | 공식 링크 |")
         lines.append("|---|---|")
@@ -203,7 +272,8 @@ def build_dataset_status_section_from_text(
 
 
 def build_dataset_status_section(
-    hits: Optional[List[dict]], text: str, header: str = DEFAULT_HEADER
+    hits: Optional[List[dict]], text: str, header: str = DEFAULT_HEADER,
+    documents: Optional[Sequence[object]] = None,
 ) -> str:
     """구조화 검색 결과와 조립된 리포트 텍스트를 함께 사용해 누락을 줄인다.
 
@@ -212,9 +282,12 @@ def build_dataset_status_section(
     목록에 합친다. 텍스트에서만 확인된 이름은 연관 소송 수를 추정하지 않는다.
     """
     try:
-        agg = _aggregate_from_hits(hits)
+        # 실제 PDF에서 추출한 소장 원문을 최우선 근거로 사용하고, CourtListener의
+        # 소장 검색문을 보완한다. 기사/요약은 사건·근거가 없는 후보로만 추가한다.
+        agg = _aggregate_from_documents(documents)
+        _merge_aggregates(agg, _aggregate_from_hits(hits))
         for name in extract_dataset_names(text or ""):
-            agg.setdefault(name.casefold(), {"name": name, "cases": []})
+            agg.setdefault(name.casefold(), {"name": name, "cases": [], "evidence": []})
         return _render(agg, header, show_cases=True)
     except Exception:
         return ""

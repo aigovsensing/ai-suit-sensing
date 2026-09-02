@@ -1,11 +1,22 @@
 import unittest
 from types import SimpleNamespace
 
+from src.courtlistener import CLDocument
 from src.complaint_parse import extract_dataset_names
 from src.dataset_status import build_dataset_status_section, enrich_hits_with_complaint_documents
 
 
 class DatasetStatusTest(unittest.TestCase):
+    def _complaint(self, text):
+        return CLDocument(
+            docket_id=1, docket_number="1:26-cv-1", case_name="Authors v. AI Corp.",
+            court="N.D. Cal.", date_filed="2026-09-01", doc_type="Complaint",
+            doc_number="1", description="Complaint",
+            document_url="https://example.test/complaint", pdf_url="https://example.test/a.pdf",
+            pdf_text_snippet=text, extracted_plaintiff="Authors", extracted_defendant="AI Corp.",
+            extracted_causes="Copyright infringement", extracted_ai_snippet="",
+        )
+
     def test_combines_case_hits_and_report_text(self):
         hits = [{
             "docket_id": 1,
@@ -67,6 +78,24 @@ class DatasetStatusTest(unittest.TestCase):
 
         self.assertEqual(enriched[0]["docket_id"], 10)
         self.assertIn("LAION-5B", enriched[0]["complaint_pdf_text"])
+
+    def test_complaint_document_provides_case_and_quoted_evidence(self):
+        section = build_dataset_status_section(
+            [], "", documents=[self._complaint(
+                "Plaintiffs allege that defendant copied Books3 without permission to train its model."
+            )]
+        )
+
+        self.assertIn("확인 근거", section)
+        self.assertIn("[소장 원문](https://example.test/complaint)", section)
+        self.assertIn("Plaintiffs allege", section)
+        self.assertIn("copied Books3 without permission", section)
+        self.assertIn("Authors v. AI Corp.", section)
+
+    def test_report_only_name_is_clearly_marked_unverified(self):
+        section = build_dataset_status_section([], "An article mentions LAION-5B.")
+
+        self.assertIn("기사/요약에서 식별(소장 원문 미확인)", section)
 
 
 if __name__ == "__main__":
