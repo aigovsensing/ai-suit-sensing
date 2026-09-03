@@ -53,17 +53,18 @@ def assemble_digest(
         report_date=report_date, lookback_days=cl_lookback_days, hits=hits
     )
 
-    # 4. 소송사건에 연관된 데이터셋 현황 — 리포트 제일 마지막(GitHub/이메일 공통)
+    # 🧬 소송사건에 연관된 데이터셋 현황 — 가장 중요한 정보이므로 리포트 '제일 처음'에 배치.
     # 검색 스니펫뿐 아니라 Gemini/기사 본문도 함께 검사한다. CourtListener 스니펫에
     # 데이터셋 이름이 잘려 있더라도 앞 섹션에 명시된 이름을 최종 현황에서 보존한다.
+    # (이메일 제목/헤더는 '조간/석간' 마커 라인을 검색해 추출하므로 순서를 바꿔도 정상 동작한다.)
     dataset_source_text = _join(gemini_md, news_github, new_suits)
     dataset_status = build_dataset_status_section(
         hits,
         dataset_source_text,
-        header="## 4. 🧬 소송사건에 연관된 데이터셋 현황",
+        header="## 🧬 소송사건에 연관된 데이터셋 현황",
         documents=complaint_documents,
     )
 
-    github_body = _join(gemini_md, news_github, new_suits, dataset_status)
-    email_body = _join(gemini_md, news_email, new_suits, dataset_status)
+    github_body = _join(dataset_status, gemini_md, news_github, new_suits)
+    email_body = _join(dataset_status, gemini_md, news_email, new_suits)
     return github_body, email_body
