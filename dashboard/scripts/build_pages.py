@@ -501,6 +501,10 @@ def main():
     risky_datasets = load_risky_datasets()
     with open(os.path.join(api_dir, "risky-open-datasets.json"), "w", encoding="utf-8") as f:
         json.dump({"count": len(risky_datasets), "data": risky_datasets}, f, ensure_ascii=False)
+    # JSON 게시판과 같은 원본 CSV를 공개 다운로드로 제공한다.
+    os.makedirs(os.path.join(docs, "data"), exist_ok=True)
+    if os.path.isfile(RISKY_DATASETS_CSV):
+        shutil.copyfile(RISKY_DATASETS_CSV, os.path.join(docs, "data", "risky-open-datasets.csv"))
 
     for i, fn in enumerate(csv_files):
         csv_path = os.path.join(DATA_DIR, fn)

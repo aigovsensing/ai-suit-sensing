@@ -16,6 +16,10 @@ on:
     - cron: "50 22 * * *"     # 🗓️ 조간 2차 백업 (KST 07:50 = UTC 22:50) — 1차 누락 대비
   workflow_dispatch: {}
 
+concurrency:
+  group: lawsuit-monitor-main-writer
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-latest
@@ -88,10 +92,17 @@ jobs:
         run: |
           python -m src.run
 
-      - name: Commit and Push Image
+      - name: Commit and push generated monitoring assets
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add docs/img/daily_visual_report.png data/risky-open-datasets.csv || true
-          git commit -m "chore: update daily visual report image [skip ci]" || echo "No changes to commit"
-          git push origin main || echo "Push failed or no changes"
+          # Do not use [skip ci]: a catalog change must trigger pages.yml so the
+          # public dataset board receives newly collected observations.
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update monitoring assets"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

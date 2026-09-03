@@ -31,6 +31,40 @@ def _unique(items: list, key) -> list:
     return result
 
 
+def _merge_named_details(old_items: list[dict], new_items: list[dict]) -> list[dict]:
+    """Merge case details by name, enriching a previously missing URL in place."""
+    merged: dict[str, dict] = {}
+    for item in old_items + new_items:
+        name = str(item.get("name") or "").strip()
+        if not name:
+            continue
+        key = name.casefold()
+        previous = merged.get(key, {})
+        merged[key] = {
+            "name": previous.get("name") or name,
+            "url": previous.get("url") or str(item.get("url") or ""),
+        }
+    return list(merged.values())
+
+
+def _merge_evidence(old_items: list[dict], new_items: list[dict]) -> list[dict]:
+    """Keep unique evidence while filling source metadata learned on later runs."""
+    merged: dict[tuple[str, str], dict] = {}
+    for item in old_items + new_items:
+        excerpt = str(item.get("excerpt") or "").strip()
+        if not excerpt:
+            continue
+        key = (str(item.get("case") or "").casefold(), excerpt.casefold())
+        previous = merged.get(key, {})
+        merged[key] = {
+            "case": previous.get("case") or str(item.get("case") or ""),
+            "source": previous.get("source") or str(item.get("source") or ""),
+            "excerpt": previous.get("excerpt") or excerpt,
+            "url": previous.get("url") or str(item.get("url") or ""),
+        }
+    return list(merged.values())
+
+
 def upsert_dataset_catalog(aggregate: Mapping[str, dict], path=DEFAULT_PATH, *, now: str | None = None) -> list[dict]:
     """Merge observations into CSV, retaining one case-insensitive dataset row."""
     target = Path(path)
@@ -48,12 +82,10 @@ def upsert_dataset_catalog(aggregate: Mapping[str, dict], path=DEFAULT_PATH, *, 
             continue
         key, old = name.casefold(), existing.get(name.casefold(), {})
         new_cases = [{"name": str(x[0]), "url": str(x[1] or "")} for x in incoming.get("cases", []) if x and x[0]]
-        cases = _unique(_loads(old.get("related_cases", "")) + new_cases,
-                        lambda x: str(x.get("name", "")).casefold())
+        cases = _merge_named_details(_loads(old.get("related_cases", "")), new_cases)
         new_evidence = [{"case": str(x[0]), "source": str(x[1]), "excerpt": str(x[2]), "url": str(x[3] or "")}
                         for x in incoming.get("evidence", []) if len(x) >= 4 and x[2]]
-        evidence = _unique(_loads(old.get("evidence", "")) + new_evidence,
-                           lambda x: (str(x.get("case", "")).casefold(), str(x.get("excerpt", "")).casefold()))
+        evidence = _merge_evidence(_loads(old.get("evidence", "")), new_evidence)
         urls = _unique(_loads(old.get("source_urls", "")) + [x["url"] for x in new_evidence if x["url"]], lambda x: x)
         changed = (
             cases != _loads(old.get("related_cases", ""))

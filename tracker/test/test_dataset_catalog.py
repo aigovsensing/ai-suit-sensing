@@ -47,6 +47,26 @@ class DatasetCatalogTest(unittest.TestCase):
             self.assertEqual(unchanged["case_count"], 2)
             self.assertEqual(unchanged["last_seen"], "2026-09-02T00:00:00+00:00")
 
+    def test_repeated_case_enriches_missing_urls_without_duplicate_rows(self):
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.csv"
+            upsert_dataset_catalog({"books3": {
+                "name": "Books3", "cases": [("Authors v. AI", "")],
+                "evidence": [("Authors v. AI", "기사", "Books3 copied", "")],
+            }}, path, now="2026-09-01T00:00:00+00:00")
+            upsert_dataset_catalog({"BOOKS3": {
+                "name": "BOOKS3",
+                "cases": [("Authors v. AI", "https://example.test/case")],
+                "evidence": [("Authors v. AI", "소장 원문", "Books3 copied", "https://example.test/doc")],
+            }}, path, now="2026-09-02T00:00:00+00:00")
+
+            row = catalog_as_json(path)[0]
+            self.assertEqual(len(row["related_cases"]), 1)
+            self.assertEqual(row["related_cases"][0]["url"], "https://example.test/case")
+            self.assertEqual(len(row["evidence"]), 1)
+            self.assertEqual(row["evidence"][0]["url"], "https://example.test/doc")
+            self.assertEqual(row["source_urls"], ["https://example.test/doc"])
+
 
 if __name__ == "__main__":
     unittest.main()
