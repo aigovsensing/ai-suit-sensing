@@ -18,7 +18,9 @@
 `tracker/data/risky-open-datasets.csv`를 빌드한 `api/risky-open-datasets.json`을 읽습니다.
 수집기는 데이터셋 이름을 대소문자 구분 없이 하나의 행으로 유지하면서 새로운 연관 소송,
 확인 근거와 출처 URL만 누적합니다. 게시판은 기본 10개씩 표시하며 5·10·20·30·50·70·100개
-보기와 데이터셋명·소송명·근거 통합 검색을 지원합니다.
+보기와 데이터셋명·소송명·근거 통합 검색을 지원합니다. 게시판과 동일한 내용을
+[`data/risky-open-datasets.csv`](./data/risky-open-datasets.csv)에서 내려받을 수 있으며,
+수집 워크플로가 카탈로그를 갱신하면 Pages 배포도 자동으로 실행됩니다.
 
 ---
 
