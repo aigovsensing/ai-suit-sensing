@@ -31,6 +31,11 @@ def _unique(items: list, key) -> list:
     return result
 
 
+def _usable_url(value: object) -> str:
+    value = str(value or "").strip()
+    return value if value.lower().startswith(("https://", "http://")) else ""
+
+
 def _merge_named_details(old_items: list[dict], new_items: list[dict]) -> list[dict]:
     """Merge case details by name, enriching a previously missing URL in place."""
     merged: dict[str, dict] = {}
@@ -42,7 +47,7 @@ def _merge_named_details(old_items: list[dict], new_items: list[dict]) -> list[d
         previous = merged.get(key, {})
         merged[key] = {
             "name": previous.get("name") or name,
-            "url": previous.get("url") or str(item.get("url") or ""),
+            "url": _usable_url(previous.get("url")) or _usable_url(item.get("url")),
         }
     return list(merged.values())
 
@@ -60,7 +65,7 @@ def _merge_evidence(old_items: list[dict], new_items: list[dict]) -> list[dict]:
             "case": previous.get("case") or str(item.get("case") or ""),
             "source": previous.get("source") or str(item.get("source") or ""),
             "excerpt": previous.get("excerpt") or excerpt,
-            "url": previous.get("url") or str(item.get("url") or ""),
+            "url": _usable_url(previous.get("url")) or _usable_url(item.get("url")),
         }
     return list(merged.values())
 
@@ -86,7 +91,12 @@ def upsert_dataset_catalog(aggregate: Mapping[str, dict], path=DEFAULT_PATH, *, 
         new_evidence = [{"case": str(x[0]), "source": str(x[1]), "excerpt": str(x[2]), "url": str(x[3] or "")}
                         for x in incoming.get("evidence", []) if len(x) >= 4 and x[2]]
         evidence = _merge_evidence(_loads(old.get("evidence", "")), new_evidence)
-        urls = _unique(_loads(old.get("source_urls", "")) + [x["url"] for x in new_evidence if x["url"]], lambda x: x)
+        urls = _unique(
+            [_usable_url(url) for url in _loads(old.get("source_urls", ""))]
+            + [_usable_url(x["url"]) for x in new_evidence],
+            lambda x: x,
+        )
+        urls = [url for url in urls if url]
         changed = (
             cases != _loads(old.get("related_cases", ""))
             or evidence != _loads(old.get("evidence", ""))

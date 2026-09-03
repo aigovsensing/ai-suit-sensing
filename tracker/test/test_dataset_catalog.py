@@ -51,8 +51,8 @@ class DatasetCatalogTest(unittest.TestCase):
         with TemporaryDirectory() as tmp:
             path = Path(tmp) / "catalog.csv"
             upsert_dataset_catalog({"books3": {
-                "name": "Books3", "cases": [("Authors v. AI", "")],
-                "evidence": [("Authors v. AI", "기사", "Books3 copied", "")],
+                "name": "Books3", "cases": [("Authors v. AI", "-")],
+                "evidence": [("Authors v. AI", "기사", "Books3 copied", "-")],
             }}, path, now="2026-09-01T00:00:00+00:00")
             upsert_dataset_catalog({"BOOKS3": {
                 "name": "BOOKS3",
