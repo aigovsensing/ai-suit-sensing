@@ -78,6 +78,7 @@ UPDATE 시 빈 값은 덮어쓰지 않으며(센싱 누락 보호), 변경 이�
 ```bash
 python -m tests.test_csv_store   # 정본 CSV round-trip / 식별 헬퍼
 python -m tests.test_pipeline    # matcher→changeset→apply (네트워크/LLM 불필요)
+python -m pytest tests/test_pr_review.py -q  # PR accept/reject 안전 기준
 ```
 
 ## 구성
