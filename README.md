@@ -152,7 +152,8 @@ python -m src.run review proposals/changeset_<stamp>.json
 python -m src.run apply  proposals/changeset_<stamp>.json
 ```
 
-→ **권장 검토 방식은 GitHub PR**입니다. [`.github/workflows/analyzer.yml`](./.github/workflows/analyzer.yml)가 후보 CSV를 PR로 자동 생성하므로, **merge=accept / close=reject**로 검토하면 됩니다.
+→ [`.github/workflows/analyzer.yml`](./.github/workflows/analyzer.yml)가 후보 CSV PR을 생성하고,
+[`review-lawsuit-data-pr.yml`](./.github/workflows/review-lawsuit-data-pr.yml)가 스키마·정본 보존·건수·추적성을 자동 검증해 **merge=accept / close=reject**로 처리합니다.
 자세한 내용은 [analyzer/README.md](./analyzer/README.md)와 [구현 계획서](./analyzer/implementation-plan.md).
 
 ---
@@ -185,9 +186,7 @@ sequenceDiagram
     CSV->>D: CSV 기반 시각화·조회
 ```
 
-> **핵심 원칙**: *제안은 자동, 반영은 사람 승인 후.* 빈 값은 덮어쓰지 않고(센싱 누락 보호), 변경 이력은 히스토리 컬럼에 누적하며, 정본 CSV는 덮어쓰지 않고 새 타임스탬프 버전으로 저장합니다.
->
-> **고신뢰 자동 머지 예외**: 모든 제안이 도켓번호/System ID로 확정 매칭된 고신뢰(신뢰도 ≥ 0.95) 업데이트뿐이면 PR을 자동 머지합니다. 신규(NEW) 소송은 신뢰도 0.9 고정이므로, 신규 건이 하나라도 포함된 날은 항상 사람 검토를 거칩니다. 자동 머지된 변경도 PR 이력으로 감사·revert할 수 있습니다.
+> **핵심 원칙**: *제안과 검증은 자동, 안전 기준을 통과한 변경만 자동 반영.* 빈 값은 덮어쓰지 않고(센싱 누락 보호), 변경 이력은 히스토리 컬럼에 누적하며, 정본 CSV는 덮어쓰지 않고 새 타임스탬프 버전으로 저장합니다. 보존·스키마·건수·추적성 검증을 모두 통과하면 merge하고, 하나라도 실패하면 사유를 댓글로 남기고 close합니다.
 
 ---
 
@@ -232,7 +231,7 @@ sequenceDiagram
 2. **리포트** — 당일·이전 이슈 댓글과 대조해 중복을 제거한 뒤, 일자별 GitHub 이슈(`AI학습데이터 저작권 소송 모니터링 (YYYY-MM-DD)`)에 신규/업데이트 건을 댓글로 누적합니다.
 3. **조간·석간·통합 정리** — 당일 첫 실행에서 Gemini가 🗓️ 조간뉴스(최근 N일 동향)를, KST 21시 이후 실행에서 🧠 석간뉴스(당일 요약)를 생성해 이슈 댓글과 이메일로 발행합니다. KST 22시 이후(KST 22:00, [`.github/workflows/consolidated-email.yml`](./.github/workflows/consolidated-email.yml))에는 당일 이슈 댓글을 취합한 📑 **당일 소송건들 통합 정리 자료**를 이메일로 추가 발송합니다(당일 이슈에 석간뉴스가 존재할 때만 발송). 이 **3종 이메일은 각각 독립 스위치**(`ENABLE_EMAIL_MORNING`/`ENABLE_EMAIL_EVENING`/`ENABLE_EMAIL_CONSOLIDATED`, 기본 활성)로 발송 여부를 켜고 끌 수 있으며, 상위에 마스터 스위치 `ENABLE_EMAIL_SENDER`가 있습니다.
 4. **마감** — 다음 날 새 이슈가 생성되면 전날 이슈는 통합 리포트(통계/테이블)를 남기고 자동 Close 됩니다. 석간뉴스가 미발행 상태라면 이 시점에 백필합니다.
-5. **정리** — 매일 KST 10:00 `analyzer`가 쌓인 이슈 리포트를 분석해 정본 CSV 대비 변경 제안 PR을 생성합니다. 신규 소송이 포함되면 **사람이 PR 검토로 반영 여부를 결정**하고, 고신뢰(≥0.95) 업데이트만으로 구성된 제안은 자동 머지됩니다.
+5. **정리** — 매일 KST 10:00 `analyzer`가 쌓인 이슈 리포트를 분석해 정본 CSV 대비 변경 제안 PR을 생성합니다. 자동 리뷰어가 정본 보존·스키마·건수·추적성을 검증해 통과 시 merge, 실패 시 사유를 남기고 close합니다.
 6. **시각화** — 승인되어 갱신된 정본 CSV를 `dashboard`(FastAPI, `:8007`)가 지도 히트맵·통계·소송 목록으로 시각화합니다. 운영 서버는 [`dashboard/scripts/auto_pull.sh`](./dashboard/scripts/auto_pull.sh)(cron, 5분 주기)가 `main`을 자동 반영하므로 merge 후 별도 조작이 필요 없습니다. 접속에는 로그인 암호가 필요합니다.
 
 ---
@@ -277,9 +276,9 @@ tracker/
 
 ### 2. [`analyzer/`](./analyzer) — 센싱→정리 자동화기 (사람 검토 기반)
 
-`tracker`가 GitHub Issue로 보고한 소송 내용을 분석하여, 기존 정본 CSV(`dashboard/data/*.csv`)와 대조하고 **신규 추가 / 기존 레코드 업데이트** 변경 제안을 생성합니다. 기존에 사람이 수동으로 하던 분석·정리 단계를 자동화하되, 소송 데이터는 법적 민감 정보이므로 **CSV 반영 전에 반드시 사람이 검토(accept/reject)** 하는 *Human-in-the-Loop* 구조입니다.
+`tracker`가 GitHub Issue로 보고한 소송 내용을 분석하여, 기존 정본 CSV(`dashboard/data/*.csv`)와 대조하고 **신규 추가 / 기존 레코드 업데이트** 변경 제안을 생성합니다. PR 반영 판정도 일관된 기계적 안전 기준으로 자동화됩니다.
 
-**핵심 원칙**: *제안은 자동, 반영은 사람 승인 후.*
+**핵심 원칙**: *제안과 안전성 검증은 자동, 기준 통과 시만 자동 반영.*
 
 **주요 기능**
 - **이슈 분석 → 구조화**: Gemini로 이슈 텍스트에서 소송 레코드를 추출하고, 도켓번호 정규식·스키마 검증으로 환각을 차단합니다.

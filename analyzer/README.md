@@ -52,12 +52,13 @@ python -m src.run analyze --extracted-json tests/fixtures/sample_extracted.json 
 ### 2-A) 검토 방식 A — GitHub PR (권장)
 GitHub Actions(`.github/workflows/analyzer.yml`)가 위 분석을 실행하고,
 후보 CSV를 브랜치에 커밋해 **PR을 자동 생성**한다.
-- **merge** → 정본 CSV 반영(accept)
-- **close** → 미반영(reject)
-- 일부만 반영하려면 PR 브랜치의 CSV를 직접 수정 후 머지.
-- **고신뢰 자동 머지**: 모든 제안의 신뢰도가 `auto_accept_min_confidence`(config.yaml, 기본 0.95)
-  이상이면 — 즉 도켓번호(0.97)/System ID(0.95)로 확정 매칭된 업데이트뿐이면 — PR을 자동 머지한다.
-  신규(NEW) 소송은 신뢰도 0.9 고정이라 하나라도 포함되면 항상 사람 검토(HITL)로 남는다.
+- `.github/workflows/review-lawsuit-data-pr.yml`이 모든 갱신 제안을 자동 리뷰한다.
+- **Accept / merge**: 허용된 bot/계정의 `analyzer/*` 브랜치이고, 새 CSV 하나만 추가하며,
+  23개 컬럼 스키마·System ID·No·PR 건수가 일치하고, 기존 레코드와 히스토리를
+  삭제/개작하지 않으며, 변경 시각·출처 이슈·기준 CSV를 추적할 수 있을 때이다.
+- **Reject / close**: 위 항목 중 하나라도 실패하면 사유를 PR 댓글로 남기고 자동 close한다.
+- PR 코드는 checkout/실행하지 않고 main의 신뢰할 수 있는 리뷰어가 GitHub API로 CSV blob만
+  읽으므로 `pull_request_target` 권한 상승 공격을 방지한다.
 
 ### 2-B) 검토 방식 B — CLI (보조)
 ```bash

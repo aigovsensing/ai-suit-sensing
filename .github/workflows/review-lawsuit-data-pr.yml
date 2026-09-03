@@ -1,0 +1,32 @@
+name: Review lawsuit data proposal
+
+# pull_request_target runs this trusted main-branch workflow.  PR code is never
+# checked out or executed; the reviewer downloads only CSV blobs via GitHub API.
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: lawsuit-data-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    if: startsWith(github.event.pull_request.title, '소송 데이터 갱신 제안') || startsWith(github.event.pull_request.title, '🤖 소송 데이터 갱신 제안')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted reviewer from main
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          persist-credentials: false
+
+      - name: Review and merge or reject
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python -m analyzer.src.pr_review
