@@ -86,6 +86,10 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 | `GEMINI_MODEL` | **Variable** | `gemini-flash-latest` | 1차로 사용할 Gemini 모델명. 429/일시 오류 시 폴백 체인으로 자동 전환됩니다. |
 | `GEMINI_MODEL_FALLBACKS` | **Variable** | (공백) | 폴백 체인 재정의(쉼표 구분). 미지정 시 기본: `gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash → gemini-2.5-flash-lite` |
 
+> Gemini 키가 없거나 API 호출·쿼터가 실패하면 이메일 발송을 실패 경고로 대체하지 않고,
+> 수집된 뉴스와 공개 도켓만 이용한 데이터 기반 요약을 자동 생성합니다. 선결제 잔액 소진은
+> 같은 프로젝트의 모델을 재호출해도 회복되지 않으므로 즉시 이 경로로 전환합니다.
+
 > 💡 **하이브리드(Hybrid) 2단계 필터링 팁 (추천)**
 > `BM25_SEMANTIC_DEDUP=1`과 `GEMINI_SEMANTIC_DEDUP=1`을 모두 활성화하면 가장 스마트하고 경제적인 중복 제거가 가능합니다.
 > 1. **1단계 (BM25 로컬 필터링):** 로컬 알고리즘이 단어가 많이 겹치는 중복 기사들을 API 호출 없이 빠르게 걸러냅니다.

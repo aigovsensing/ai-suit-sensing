@@ -63,15 +63,17 @@ def get_gemini_model_display_name() -> str:
         
     return "Gemini"
 
-def get_gemini_summary(prompt: str) -> str:
+def get_gemini_summary(prompt: str, fallback_text: str = "") -> str:
     """
     Gemini API를 사용하여 텍스트 요약을 생성합니다.
-    rate limit 및 transient 503 오류가 발생할 경우를 위해 exponential backoff와 fallback model을 포함하고 있습니다.
+    rate limit 및 transient 503 오류가 발생할 경우를 위해 exponential backoff와 fallback model을 포함합니다.
+    API 키/결제/쿼터 문제로 생성할 수 없을 때는 이메일에 API 오류를 노출하지 않고
+    호출자가 제공한 데이터 기반 ``fallback_text``를 반환합니다.
     """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         debug_log("GEMINI_API_KEY가 설정되지 않아 Gemini 요약을 건너뜁니다.")
-        return ""
+        return fallback_text
 
     model_name = get_gemini_model_name()
     max_retries = 3
@@ -131,6 +133,13 @@ def get_gemini_summary(prompt: str) -> str:
                 # Rate limit (429) 또는 일시적인 서버 오류 (500, 503, 504) 여부 파악
                 is_transient = False
                 err_lower = str(e).lower()
+                billing_error = any(term in err_lower for term in (
+                    "prepayment credits are depleted", "billing", "payment required"
+                ))
+                if billing_error:
+                    # 같은 프로젝트의 다른 모델도 동일 결제 잔액을 사용하므로 재시도/폴백은 무의미하다.
+                    debug_log("Gemini 결제 잔액 오류 감지: 즉시 데이터 기반 요약으로 전환합니다.")
+                    return fallback_text
                 if "429" in err_lower or "resource_exhausted" in err_lower:
                     is_transient = True
                     debug_log("Rate limit (429 / RESOURCE_EXHAUSTED) 감지.")
@@ -149,42 +158,8 @@ def get_gemini_summary(prompt: str) -> str:
                     # 일시적이지 않은 오류거나 재시도 횟수를 초과한 경우 루프 탈출 후 다음 모델 시도
                     break
 
-    # 모든 재시도 및 백업 모델 호출마저 실패한 경우: 투명하게 에러 경고 마크다운 작성
-    error_msg = str(last_error) if last_error else "알 수 없는 오류"
-
-    # 에러 메시지에서 핵심 정보(code, message)만 추출하여 가독성 있는 요약 생성
-    import re
-    short_error = error_msg
-    try:
-        code_match = re.search(r"'code':\s*(\d+)", error_msg)
-        msg_match = re.search(r"'message':\s*'([^']+)'", error_msg)
-        if not msg_match:
-            # 큰따옴표로 감싸인 경우도 처리
-            msg_match = re.search(r'"message":\s*"([^"]+)"', error_msg)
-        if code_match or msg_match:
-            code_str = code_match.group(1) if code_match else ""
-            msg_str = msg_match.group(1).split("\n")[0].strip() if msg_match else ""
-            short_error = f"code: {code_str}, message: {msg_str}" if code_str else msg_str
-    except Exception:
-        pass  # 파싱 실패 시 원본 에러 메시지 사용
-
-    title = ""
-    if "조간뉴스" in prompt:
-        title = "## 🗓️ (조간뉴스) 동향 요약 생성 실패\n\n"
-    elif "석간뉴스" in prompt:
-        title = "## 🧠 (석간뉴스) 당일 요약 보고서 생성 실패\n\n"
-
-    warning_section = (
-        f"{title}"
-        "> [!CAUTION]\n"
-        "> **🤖 Gemini API 호출 실패**\n"
-        "> Gemini API 호출에 실패하거나 응답이 차단되어 요약 보고서를 자동 생성할 수 없습니다.\n"
-        f"> - **최종 시도 모델**: `{final_model}`\n"
-        f"> - **오류 정보**: `{short_error}`\n"
-        "> \n"
-        "> Rate Limit 초과 또는 구글 API 서버의 일시적인 혼잡/점검 상태일 수 있습니다. 잠시 후 워크플로우를 재실행해 보세요. ✨\n"
-    )
-    return warning_section
+    debug_log(f"Gemini 전체 모델 호출 실패({final_model}): 데이터 기반 요약으로 전환합니다. 마지막 오류: {last_error}")
+    return fallback_text
 
 def get_embeddings(texts: List[str]) -> List[List[float]]:
     """

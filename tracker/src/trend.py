@@ -7,6 +7,59 @@ from .courtlistener import CLCaseSummary
 from .gemini import get_gemini_summary
 from .utils import debug_log
 
+
+def _morning_fallback(lawsuits, cl_cases, lookback_days, report_date):
+    """외부 생성형 API 없이 수집 사실만으로 만드는 안전한 조간 요약."""
+    news = []
+    for item in lawsuits[:10]:
+        label = item.article_title or item.case_title or "제목 미확인"
+        url = item.article_urls[0] if item.article_urls else ""
+        link = f"[{label}]({url})" if url else label
+        news.append(f"* **{link}**\n  * 내용: {item.reason or '세부 내용 확인 필요'}\n  * 시사점: 원문과 사건 기록을 교차 확인해야 합니다.")
+    cases = []
+    for item in cl_cases[:10]:
+        cases.append(f"* **{item.case_name}** (도켓 {item.docket_number or '미확인'}, Nature: {item.nature_of_suit or '미확인'})\n  * 공개 도켓의 최근 업데이트를 추적해야 합니다.")
+    return f"""## 🗓️ (조간뉴스: {report_date}) {lookback_days}일간의 AI학습데이터 소송 동향
+
+## 1. 최근 {lookback_days}일간 AI 학습데이터 소송 동향 요약 (출처: 수집 데이터 자동 정리)
+
+### 📝 핵심 요약 (3문장)
+최근 {lookback_days}일 동안 관련 뉴스 {len(lawsuits)}건과 신규·갱신 도켓 {len(cl_cases)}건이 수집되었습니다. 아래 내용은 수집 원문과 법원 공개 도켓을 기준으로 자동 정리되었습니다. 법적 판단이나 위험 평가는 연결된 원문을 확인한 뒤 수행해야 합니다.
+
+### 1.1 글로벌 주요 뉴스 및 판결 분석
+{chr(10).join(news) if news else '* 최근 수집된 관련 뉴스가 없습니다.'}
+
+### 1.2 신규 접수 주요 소송 동향 (미 연방법원 도켓 분석)
+{chr(10).join(cases) if cases else '* 제공된 신규 도켓 데이터가 없습니다.'}
+
+### 1.3 법적·기술적 분석가 종합 통찰 (Insight)
+* 수집 결과는 사건 발생 여부를 알리는 모니터링 자료이며, 청구의 인용이나 위법 확정을 뜻하지 않습니다.
+* **삼성전자 영향/대비:** 가우스·갤럭시 AI 관련 학습 데이터의 출처, 라이선스, 삭제 이력을 지속적으로 문서화하고 유사 사건의 판결 변화를 점검해야 합니다.
+"""
+
+
+def _daily_fallback(news_data, case_data, report_date):
+    """외부 생성형 API 장애 시에도 이메일 본문을 완성하는 당일 요약."""
+    news = [f"* **{r[1] or '제목 미확인'}** — {r[2] or '내용 확인 필요'} (감지레벨: {r[6] or '미분류'})" for r in news_data.values()]
+    cases = [f"* **{r[2] or '사건명 미확인'}** (도켓 {r[3] or '미확인'}, Nature: {r[4] or '미확인'}) — {r[6] or '소송이유 확인 필요'}" for r in case_data.values()]
+    return f"""## 🧠 (석간뉴스: {report_date}) 당일 AI학습데이터 소송건 요약
+
+## 1. 당일 AI 학습데이터 소송 건 요약 (출처: 수집 데이터 자동 정리)
+
+### 📝 핵심 요약 (3문장)
+오늘 관련 뉴스 {len(news_data)}건과 소송 {len(case_data)}건이 취합되었습니다. 아래 목록은 취합 데이터에 기재된 사실을 자동 정리한 결과입니다. 세부 분석과 의사결정 전에는 원문 및 법원 기록을 확인해야 합니다.
+
+### 1.1 글로벌 주요 뉴스 및 판결 분석
+{chr(10).join(news) if news else '* 오늘 수집된 뉴스가 없습니다.'}
+
+### 1.2 신규 접수 주요 소송 동향 (미 연방법원 도켓 분석)
+{chr(10).join(cases) if cases else '* 제공된 신규 도켓 데이터가 없습니다.'}
+
+### 1.3 법적·기술적 분석가 종합 통찰 (Insight)
+* 자동 정리 결과는 법률 의견이 아니며 사건 원문에 따른 후속 검토가 필요합니다.
+* **삼성전자 영향/대비:** 가우스·갤럭시 AI의 데이터 계보와 라이선스 증빙을 보존하고 관련 소송의 쟁점 변화를 정기적으로 반영해야 합니다.
+"""
+
 def generate_trend_summary(lawsuits: List[Lawsuit], cl_cases: List[CLCaseSummary], lookback_days: int, report_date: str | None = None) -> str:
     """
     수집된 뉴스 및 소송 데이터를 기반으로 Gemini를 통해 주요 동향 요약을 생성합니다.
@@ -64,7 +117,8 @@ def generate_trend_summary(lawsuits: List[Lawsuit], cl_cases: List[CLCaseSummary
 """
 
     debug_log(f"Gemini 동향 요약 생성 중 (데이터: 뉴스 {len(lawsuits)}건, 소송 {len(cl_cases)}건)")
-    summary = get_gemini_summary(prompt)
+    fallback = _morning_fallback(lawsuits, cl_cases, lookback_days, today_kst)
+    summary = get_gemini_summary(prompt, fallback_text=fallback)
     
     if not summary:
         return ""
@@ -125,11 +179,10 @@ def generate_daily_report_from_data(news_data: dict, case_data: dict, report_dat
 5. 제공된 데이터에 기반하되, 학습된 지식과 전문적인 통찰력을 담아 심도 있게 구성하세요.
 """
     debug_log(f"Gemini 당일 요약 리포트 생성 중 (데이터: 뉴스 {len(news_lines)}건, 소송 {len(case_lines)}건)")
-    summary = get_gemini_summary(prompt)
+    fallback = _daily_fallback(news_data, case_data, today_kst)
+    summary = get_gemini_summary(prompt, fallback_text=fallback)
     if not summary:
-        # GEMINI_API_KEY가 설정되지 않은 경우 (get_gemini_summary가 "" 반환)
-        summary = f"## 🧠 (석간뉴스: {today_kst}) 당일 AI학습데이터 소송건 요약\n\n> [!CAUTION]\n> **보고서 요약 실패:** GEMINI_API_KEY가 설정되지 않아 요약 보고서를 생성할 수 없습니다.\n"
-    # get_gemini_summary()가 API 오류 발생 시 이미 에러 메시지를 포함한 경고 마크다운을 반환하므로 별도 처리 불필요
+        summary = fallback
     
     # [추가] 지브리 스타일 이미지 생성 제어 (환경 변수 확인)
     image_gen_enabled = os.environ.get("GEMINI_DAILY_REPORT_IMAGEGEN") == "1"

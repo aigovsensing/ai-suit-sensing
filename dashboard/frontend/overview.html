@@ -7,6 +7,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+<script defer src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 <style>
 /* ─────────── 메인 현황판 (라이트 테마, 의존성 없음) ─────────── */
 :root {
@@ -117,6 +120,10 @@ body { margin: 0; background: var(--bg); color: var(--text);
         padding: 8px 12px; font-size: 13px; background: var(--input-bg); color: var(--text); }
 .toolbar input { min-width: 220px; }
 .toolbar .count { margin-left: auto; font-size: 12px; color: var(--muted); }
+.export-tools { display:flex; flex-wrap:wrap; gap:6px; }
+.export-tools button { border:1px solid var(--border); border-radius:7px; background:var(--card); color:var(--text);
+  padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; }
+.export-tools button:hover { border-color:var(--blue); color:var(--blue); }
 table.cases { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.cases th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
                  padding: 8px 10px; border-bottom: 1px solid var(--border); }
@@ -193,8 +200,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
       <div class="dataset-head">
         <div><h2>🧬 AI 소송 사건에 연관된 데이터셋 현황</h2>
           <p>소장·기사에서 명시적으로 식별된 데이터셋을 이름별로 통합했습니다. 실제 사용 전 사건 근거와 라이선스를 확인하세요.</p></div>
-        <div><span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span>
-          <a href="data/risky-open-datasets.csv" download style="display:block;text-align:right;margin-top:9px;font-size:12px;font-weight:700;color:var(--blue);text-decoration:none">CSV 내려받기 ↓</a></div>
+        <div><span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span></div>
       </div>
       <div class="toolbar">
         <input id="datasetQ" type="search" placeholder="🔍 데이터셋 / 소송명 / 근거 검색...">
@@ -203,6 +209,10 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
           <option value="20">20개씩</option><option value="30">30개씩</option>
           <option value="50">50개씩</option><option value="70">70개씩</option><option value="100">100개씩</option>
         </select>
+        <div class="export-tools" aria-label="데이터셋 현황 저장">
+          <button onclick="exportBoard('datasets','csv')">CSV</button><button onclick="exportBoard('datasets','xlsx')">XLSX</button>
+          <button onclick="exportBoard('datasets','docx')">DOCX</button><button onclick="exportBoard('datasets','pdf')">PDF</button>
+        </div>
         <span class="count" id="datasetCount"></span>
       </div>
       <div class="dataset-table-wrap"><table class="datasets">
@@ -245,6 +255,10 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
           <option value="70">70개씩</option>
           <option value="1000">1000개씩</option>
         </select>
+        <div class="export-tools" aria-label="전체 소송 목록 저장">
+          <button onclick="exportBoard('cases','csv')">CSV</button><button onclick="exportBoard('cases','xlsx')">XLSX</button>
+          <button onclick="exportBoard('cases','docx')">DOCX</button><button onclick="exportBoard('cases','pdf')">PDF</button>
+        </div>
         <span class="count" id="tblCount"></span>
       </div>
       <table class="cases">
@@ -363,10 +377,13 @@ function datasetSearchText(row) {
   const evidence = (row.evidence || []).map(x => `${x.case} ${x.source} ${x.excerpt}`).join(" ");
   return `${row.dataset_name} ${cases} ${evidence}`.toLowerCase();
 }
+function filteredDatasets() {
+  const query = document.getElementById("datasetQ").value.trim().toLowerCase();
+  return DATASETS.filter(row => !query || datasetSearchText(row).includes(query));
+}
 function gotoDatasetPage(next) { datasetPage = next; renderDatasetTable(); }
 function renderDatasetTable() {
-  const query = document.getElementById("datasetQ").value.trim().toLowerCase();
-  const rows = DATASETS.filter(row => !query || datasetSearchText(row).includes(query));
+  const rows = filteredDatasets();
   const totalPages = Math.max(1, Math.ceil(rows.length / datasetPageSize));
   datasetPage = Math.min(Math.max(1, datasetPage), totalPages);
   const start = (datasetPage - 1) * datasetPageSize;
@@ -525,13 +542,15 @@ function initTable() {
   renderTable();
 }
 function gotoPage(p) { page = p; renderTable(); }
-function renderTable() {
+function filteredCases() {
   const q = document.getElementById("q").value.trim().toLowerCase();
   const fc = document.getElementById("fCountry").value, fs = document.getElementById("fStatus").value;
-  const rows = [...ALL]
-    .filter(r => (!fc || r.country === fc) && (!fs || r.status === fs) &&
-      (!q || `${r.case_name} ${r.defendant} ${r.plaintiff} ${r.case_no}`.toLowerCase().includes(q)))
+  return [...ALL].filter(r => (!fc || r.country === fc) && (!fs || r.status === fs) &&
+    (!q || `${r.case_name} ${r.defendant} ${r.plaintiff} ${r.case_no}`.toLowerCase().includes(q)))
     .sort((a,b) => (b._d||0) - (a._d||0));
+}
+function renderTable() {
+  const rows = filteredCases();
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   page = Math.min(Math.max(1, page), totalPages);
   const start = (page - 1) * pageSize;
@@ -556,6 +575,59 @@ function renderTable() {
     ? `전체 ${rows.length}건 중 ${start + 1}–${start + shown.length}건 표시 (${page}/${totalPages} 페이지)`
     : "검색 결과 없음";
   renderPager(totalPages);
+}
+
+/* 현재 검색·필터 결과 전체를 CSV/XLSX/DOCX/PDF로 저장한다(페이지 크기와 무관). */
+function exportData(kind) {
+  if (kind === "datasets") return {
+    title: "AI 소송 사건에 연관된 데이터셋 현황", filename: "ai-lawsuit-datasets",
+    headers: ["데이터셋","연관 소송 수","확인 근거","공식 링크","연관 소송"],
+    rows: filteredDatasets().map(r => [r.dataset_name, r.case_count || 0,
+      (r.evidence || []).map(e => `${e.source}: ${e.excerpt}`).join(" | "), r.official_url || "",
+      (r.related_cases || []).map(c => c.name).join(" | ")])
+  };
+  return {
+    title: "전체 소송 목록", filename: "ai-lawsuit-cases",
+    headers: ["소송번호","소송명","원고","피고","국가","상태","소송제기일","최근 업데이트","URL"],
+    rows: filteredCases().map(r => [r.case_no || "", r.case_name || "", r.plaintiff || "", r.defendant || "",
+      r.country || "", r.status || "", fmtDate(r._d) || r.file_date || "", r.last_update || r.result || "", r.url || ""])
+  };
+}
+function saveBlob(blob, filename) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+async function exportBoard(kind, format) {
+  const data = exportData(kind), stamp = new Date().toISOString().slice(0,10), name = `${data.filename}-${stamp}`;
+  try {
+    if (format === "csv") {
+      const quote = v => `"${String(v ?? "").replace(/"/g, '""')}"`;
+      const csv = [data.headers, ...data.rows].map(row => row.map(quote).join(",")).join("\r\n");
+      saveBlob(new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"}), name + ".csv"); return;
+    }
+    if (format === "xlsx") {
+      if (!window.XLSX) throw new Error("XLSX 모듈을 불러오지 못했습니다.");
+      const ws = XLSX.utils.aoa_to_sheet([data.headers, ...data.rows]);
+      ws["!cols"] = data.headers.map((_, i) => ({wch: Math.min(60, Math.max(12, ...data.rows.map(r => String(r[i] || "").length)))}));
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "목록"); XLSX.writeFile(wb, name + ".xlsx"); return;
+    }
+    if (format === "docx") {
+      if (!window.docx) throw new Error("DOCX 모듈을 불러오지 못했습니다.");
+      const {Document, Packer, Paragraph, Table, TableCell, TableRow, TextRun, HeadingLevel} = window.docx;
+      const makeRow = (row, header=false) => new TableRow({children:row.map(v => new TableCell({children:[new Paragraph({children:[new TextRun({text:String(v ?? ""), bold:header})]})]}))});
+      const doc = new Document({sections:[{children:[new Paragraph({text:data.title, heading:HeadingLevel.HEADING_1}),
+        new Paragraph(`내보낸 날짜: ${stamp} · ${data.rows.length}건`), new Table({rows:[makeRow(data.headers,true), ...data.rows.map(r=>makeRow(r))]})]}]});
+      saveBlob(await Packer.toBlob(doc), name + ".docx"); return;
+    }
+    if (!window.html2pdf) throw new Error("PDF 모듈을 불러오지 못했습니다.");
+    const box = document.createElement("div"); box.style.cssText = "background:#fff;color:#111;padding:20px;width:1120px;font-family:sans-serif";
+    const table = document.createElement("table"); table.style.cssText = "width:100%;border-collapse:collapse;font-size:10px";
+    const cell = (tag, value) => { const el=document.createElement(tag); el.textContent=String(value ?? ""); el.style.cssText="border:1px solid #bbb;padding:5px;vertical-align:top;word-break:break-word"; return el; };
+    const trh=document.createElement("tr"); data.headers.forEach(h=>trh.appendChild(cell("th",h))); table.appendChild(trh);
+    data.rows.forEach(row=>{const tr=document.createElement("tr");row.forEach(v=>tr.appendChild(cell("td",v)));table.appendChild(tr);});
+    const h=document.createElement("h1");h.textContent=data.title;h.style.fontSize="20px";box.append(h,table);document.body.appendChild(box);
+    await html2pdf().set({margin:7, filename:name+".pdf", image:{type:"jpeg",quality:.95}, html2canvas:{scale:1.5}, jsPDF:{unit:"mm",format:"a4",orientation:"landscape"}, pagebreak:{mode:["avoid-all","css","legacy"]}}).from(box).save(); box.remove();
+  } catch (error) { alert(`파일 저장 실패: ${error.message}\n네트워크 연결 후 다시 시도해 주세요.`); }
 }
 /* 페이지 번호: 처음/현재±2/끝만 노출하고 사이는 …으로 축약 */
 function renderPager(totalPages) {
