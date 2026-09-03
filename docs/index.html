@@ -139,6 +139,24 @@ td.case-name .pl { display: block; font-weight: 400; color: var(--muted); font-s
 .pager button:disabled { opacity: 0.4; cursor: default; }
 .pager .ell { color: var(--muted); padding: 0 2px; }
 
+/* 법적 리스크 데이터셋 게시판 */
+.dataset-card { margin-bottom: 20px; border-top: 4px solid var(--red); }
+.dataset-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:14px; }
+.dataset-head h2 { margin-bottom:5px; font-size:17px; }
+.dataset-head p { margin:0; color:var(--dim); font-size:12px; line-height:1.6; }
+.risk-note { background:#fff1f2; color:#b91c1c; border-radius:9px; padding:7px 10px; font-size:11px; font-weight:700; white-space:nowrap; }
+body.dark .risk-note { background:rgba(239,68,68,.13); color:#fca5a5; }
+.dataset-table-wrap { overflow-x:auto; }
+table.datasets { width:100%; border-collapse:collapse; font-size:13px; }
+table.datasets th { text-align:left; color:var(--muted); padding:9px 10px; border-bottom:1px solid var(--border); white-space:nowrap; }
+table.datasets td { padding:12px 10px; border-bottom:1px solid var(--row-line); vertical-align:top; line-height:1.55; }
+.dataset-name { color:#b91c1c; font-weight:800; white-space:nowrap; }
+body.dark .dataset-name { color:#fca5a5; }
+.case-chips { display:flex; flex-wrap:wrap; gap:5px; min-width:250px; }
+.case-chip { background:var(--track); color:var(--case-link); border-radius:6px; padding:3px 7px; text-decoration:none; font-size:11px; }
+.evidence { color:var(--dim); max-width:390px; min-width:240px; }
+@media (max-width:700px) { .dataset-head { flex-direction:column; } .risk-note { white-space:normal; } }
+
 /* 인사이트 */
 .insights { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 20px; }
 .insight { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px; }
@@ -171,6 +189,28 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
 
   <div id="loading">데이터 로딩 중…</div>
   <div id="board" style="display:none;">
+
+    <div class="card dataset-card">
+      <div class="dataset-head">
+        <div><h2>🧬 AI 소송 사건에 연관된 데이터셋 현황</h2>
+          <p>소장·기사에서 명시적으로 식별된 데이터셋을 이름별로 통합했습니다. 실제 사용 전 사건 근거와 라이선스를 확인하세요.</p></div>
+        <span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span>
+      </div>
+      <div class="toolbar">
+        <input id="datasetQ" type="search" placeholder="🔍 데이터셋 / 소송명 / 근거 검색...">
+        <select id="datasetPageSize" title="한 페이지 출력 건수">
+          <option value="5">5개씩</option><option value="10" selected>10개씩</option>
+          <option value="20">20개씩</option><option value="30">30개씩</option>
+          <option value="50">50개씩</option><option value="70">70개씩</option><option value="100">100개씩</option>
+        </select>
+        <span class="count" id="datasetCount"></span>
+      </div>
+      <div class="dataset-table-wrap"><table class="datasets">
+        <thead><tr><th>데이터셋</th><th>연관 소송 수</th><th>확인 근거</th><th>공식 링크</th><th>연관 소송</th></tr></thead>
+        <tbody id="datasetBody"></tbody>
+      </table></div>
+      <div class="pager" id="datasetPager"></div>
+    </div>
 
     <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
 
@@ -255,9 +295,11 @@ const DONUT_COLORS = ["#7ea6f6","#f28b82","#7bd3a0","#f5c04e","#b49af5","#f097c3
 const fmtDate = d => d instanceof Date && !isNaN(d) ? d.toISOString().slice(0,10) : "";
 const parseD = s => { const d = new Date(String(s||"").trim()); return isNaN(d) ? null : d; };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const safeUrl = s => /^https?:\/\//i.test(String(s || "").trim()) ? String(s).trim() : "";
 
-let ALL = [], FILE = "";
+let ALL = [], DATASETS = [], FILE = "";
 let page = 1, pageSize = 15; // 게시판: 기본 15건씩, 선택폼(5~1000)으로 조절
+let datasetPage = 1, datasetPageSize = 10;
 
 
 /* ── 주간/야간 테마: 저장값 우선, 없으면 OS 설정 따름 ── */
@@ -288,6 +330,10 @@ async function boot() {
     FILE = files[0]; // 최신 파일 (이름 역순 정렬 = 최신순)
     const res = await (await fetch(`/api/cases?file_name=${encodeURIComponent(FILE)}`)).json();
     ALL = (res.data || []).map(r => ({ ...r, _d: parseD(r.file_date), _kind: STATUS_KIND(r.status) }));
+    try {
+      const datasetRes = await (await fetch("api/risky-open-datasets.json")).json();
+      DATASETS = datasetRes.data || [];
+    } catch (_) { DATASETS = []; }
     render();
     document.getElementById("loading").style.display = "none";
     document.getElementById("board").style.display = "block";
@@ -298,10 +344,53 @@ async function boot() {
 }
 
 function render() {
-  renderTicker(); renderKpis(); renderYearChart(); renderDefChart();
+  initDatasetTable(); renderTicker(); renderKpis(); renderYearChart(); renderDefChart();
   renderGeo(); renderDonut(); initTable(); renderInsights();
   document.getElementById("foot").textContent =
     `AI 소송 센싱 대시보드  |  데이터셋: ${FILE}  |  총 ${ALL.length}건`;
+}
+
+function initDatasetTable() {
+  document.getElementById("datasetQ").addEventListener("input", () => { datasetPage = 1; renderDatasetTable(); });
+  document.getElementById("datasetPageSize").addEventListener("change", e => {
+    datasetPageSize = parseInt(e.target.value, 10) || 10;
+    datasetPage = 1; renderDatasetTable();
+  });
+  renderDatasetTable();
+}
+function datasetSearchText(row) {
+  const cases = (row.related_cases || []).map(x => x.name).join(" ");
+  const evidence = (row.evidence || []).map(x => `${x.case} ${x.source} ${x.excerpt}`).join(" ");
+  return `${row.dataset_name} ${cases} ${evidence}`.toLowerCase();
+}
+function gotoDatasetPage(next) { datasetPage = next; renderDatasetTable(); }
+function renderDatasetTable() {
+  const query = document.getElementById("datasetQ").value.trim().toLowerCase();
+  const rows = DATASETS.filter(row => !query || datasetSearchText(row).includes(query));
+  const totalPages = Math.max(1, Math.ceil(rows.length / datasetPageSize));
+  datasetPage = Math.min(Math.max(1, datasetPage), totalPages);
+  const start = (datasetPage - 1) * datasetPageSize;
+  const shown = rows.slice(start, start + datasetPageSize);
+  document.getElementById("datasetBody").innerHTML = shown.map(row => {
+    const proof = (row.evidence || [])[0];
+    const cases = (row.related_cases || []).map(item => safeUrl(item.url)
+      ? `<a class="case-chip" href="${esc(safeUrl(item.url))}" target="_blank" rel="noopener">${esc(item.name)}</a>`
+      : `<span class="case-chip">${esc(item.name)}</span>`).join("") || "—";
+    const official = safeUrl(row.official_url)
+      ? `<a href="${esc(safeUrl(row.official_url))}" target="_blank" rel="noopener">🔗 원본</a>` : "—";
+    const evidence = proof
+      ? `<b>${esc(proof.source)}</b><br>${esc(proof.excerpt)}` : "기사/요약에서 식별(소장 원문 미확인)";
+    return `<tr><td class="dataset-name">🔴 ${esc(row.dataset_name)}</td><td><b>${row.case_count || "—"}</b></td>` +
+      `<td class="evidence">${evidence}</td><td>${official}</td><td><div class="case-chips">${cases}</div></td></tr>`;
+  }).join("") || `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:28px">검색 결과가 없습니다.</td></tr>`;
+  document.getElementById("datasetCount").textContent = rows.length
+    ? `식별된 데이터셋 ${rows.length}종 · ${start + 1}–${start + shown.length} 표시` : "검색 결과 없음";
+  const pager = document.getElementById("datasetPager");
+  if (totalPages <= 1) { pager.innerHTML = ""; return; }
+  pager.innerHTML = `<button onclick="gotoDatasetPage(${datasetPage-1})" ${datasetPage===1?"disabled":""}>‹ 이전</button>` +
+    Array.from({length:totalPages}, (_,i) => i+1).map(p =>
+      `<button class="${p===datasetPage?"cur":""}" onclick="gotoDatasetPage(${p})">${p}</button>`).join("") +
+    `<button onclick="gotoDatasetPage(${datasetPage+1})" ${datasetPage===totalPages?"disabled":""}>다음 ›</button>`;
 }
 
 /* 티커: 최근 제기 순 10건 */

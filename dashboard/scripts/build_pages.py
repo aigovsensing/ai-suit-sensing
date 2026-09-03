@@ -29,6 +29,7 @@ FastAPI 백엔드가 실시간으로 제공하던 읽기 전용 API 응답을 �
     python dashboard/scripts/build_pages.py --out X   # 임의 경로에 생성
 """
 import argparse
+import csv
 import json
 import os
 import re
@@ -43,6 +44,7 @@ DATA_DIR = os.path.join(DASHBOARD_DIR, "data")
 FRONTEND_DIR = os.path.join(DASHBOARD_DIR, "frontend")
 IMG_DIR = os.path.join(DASHBOARD_DIR, "img")
 TIMELINE_DIR = os.path.join(DASHBOARD_DIR, "timeline")
+RISKY_DATASETS_CSV = os.path.join(REPO_ROOT, "tracker", "data", "risky-open-datasets.csv")
 
 # collector.builder(build_from_csv) 재사용 — pandas 만 있으면 동작한다.
 sys.path.insert(0, DASHBOARD_DIR)
@@ -172,6 +174,23 @@ def git_version():
         return {"version": version or "unknown", "commit": commit, "date": date}
     except Exception as e:  # noqa: BLE001
         return {"version": f"static-build", "commit": "unknown", "date": str(e)[:40]}
+
+
+def load_risky_datasets(path=RISKY_DATASETS_CSV):
+    """Decode the durable CSV catalog into a browser-friendly JSON structure."""
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8-sig", newline="") as handle:
+        rows = list(csv.DictReader(handle))
+    for row in rows:
+        row["case_count"] = int(row.get("case_count") or 0)
+        row["evidence_count"] = int(row.get("evidence_count") or 0)
+        for key in ("related_cases", "evidence", "source_urls"):
+            try:
+                row[key] = json.loads(row.get(key) or "[]")
+            except json.JSONDecodeError:
+                row[key] = []
+    return rows
 
 
 # ---------------------------------------------------------------------------
@@ -478,6 +497,10 @@ def main():
 
     with open(os.path.join(api_dir, "version.json"), "w", encoding="utf-8") as f:
         json.dump(git_version(), f, ensure_ascii=False)
+
+    risky_datasets = load_risky_datasets()
+    with open(os.path.join(api_dir, "risky-open-datasets.json"), "w", encoding="utf-8") as f:
+        json.dump({"count": len(risky_datasets), "data": risky_datasets}, f, ensure_ascii=False)
 
     for i, fn in enumerate(csv_files):
         csv_path = os.path.join(DATA_DIR, fn)
