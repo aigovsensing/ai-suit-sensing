@@ -2,14 +2,17 @@ name: consolidated-email
 
 # '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 전용 워크플로.
 #
-# 발송 시점: KST 23시.
+# 발송 시점: KST 22:40 (= UTC 13:40).
 #   - 석간뉴스는 KST 21시(EVENING_REPORT_HOUR 기본값) 실행에서 발송된다.
-#   - 통합 정리 자료는 그 이후인 KST 23:00(= UTC 14:00)에 발송한다.
+#   - 통합 정리 자료는 그 이후인 KST 22:40 에 발송한다. 매시 정각(:00)은 GitHub
+#     Actions 예약 지연이 커 자정을 넘기기 쉬우므로, 분을 :40 으로 두고 자정까지
+#     여유(약 1h20m)를 둔다.
 #
-# 안전장치: run.py 의 send_consolidated_email() 는 당일 이슈에 '석간뉴스'가
-# 이미 존재할 때만 이메일을 보낸다. 석간이 아직 없으면(예: EVENING_REPORT_HOUR 를
-# 23시 이상으로 변경한 경우) 조용히 건너뛴다. 발송 시각을 바꾸려면 아래 cron 을
-# 원하는 KST 시각의 UTC(−9시간) 값으로 조정할 것.
+# 안전장치(run.py send_consolidated_email):
+#   - '석간뉴스'가 이미 발행된 이슈에만 발송한다(순서 보장).
+#   - 예약 실행이 GitHub 지연으로 KST 자정을 넘겨 다음 날 새벽에 돌더라도, 오늘 →
+#     어제 순으로 '석간이 발행된' 이슈를 찾아 폴백하므로 미발송되지 않는다.
+#   - 숨김 마커로 하루 1회만 발송(지연/수동 재실행 중복 방지).
 
 permissions:
   contents: read
@@ -17,7 +20,7 @@ permissions:
 
 on:
   schedule:
-    - cron: "0 14 * * *" # KST 23:00 = UTC 14:00 (석간 KST 21시 발송 이후)
+    - cron: "40 13 * * *" # KST 22:40 = UTC 13:40 (석간 KST 21시 발송 이후, 정각 회피)
   workflow_dispatch: {}
 
 jobs:

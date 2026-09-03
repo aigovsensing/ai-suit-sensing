@@ -451,8 +451,10 @@ def send_email_report(subject: str, content: str, report_type: str | None = None
             debug_log(f"이메일 일괄 전송 요청 중: {clean_receivers} (제목: {subject})")
             server.sendmail(sender, clean_receivers, msg.as_string())
             debug_log(f"이메일 전송 성공: {clean_receivers}")
+        return True  # 실제 발송 성공 시에만 True (호출부의 멱등 마커 등에 사용)
     except Exception as e:
         print(f"[ERROR] 이메일 전송 중 SMTP 서버 오류 발생: {e}")
         _report_email_failure_to_github(
             report_type, subject, clean_receivers, f"{type(e).__name__}: {e}"
         )
+        return False

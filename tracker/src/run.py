@@ -1,7 +1,7 @@
 from __future__ import annotations
 import os
 import re
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
 import sys
@@ -426,12 +426,16 @@ def send_consolidated_email() -> None:
     """
     '📑 당일 소송건들 통합 정리 자료'를 이메일로 발송하는 독립 엔트리포인트.
 
-    KST 22시 이후(별도 워크플로 cron)에 실행되어, 당일(오늘) 이슈의 모든 댓글을 취합한
-    통합 정리 리포트를 이메일로 보낸다. GitHub 이슈에는 별도 댓글을 추가하지 않는다
-    (통합 리포트는 이슈 Close 시점에 이미 댓글로 누적된다).
+    KST 저녁(별도 워크플로 cron)에 실행되어, 대상 이슈의 모든 댓글을 취합한 통합 정리
+    리포트를 이메일로 보낸다.
 
-    가드: 당일 이슈에 석간뉴스(KST 21시 이후 발행)가 아직 없으면 발송을 건너뛴다.
-    이로써 "석간 발송 이후"라는 순서를 보장하고, 오발송을 방지한다.
+    대상 이슈 선택:
+      - 오늘 → 어제 순으로 '석간뉴스가 발행된' 이슈를 찾아 그 이슈를 대상으로 한다.
+        (GitHub 예약 실행이 지연돼 KST 자정을 넘겨 새벽에 돌면 '오늘' 이슈는 아직
+         없거나 석간이 없다. 이때 어제 이슈로 폴백해 미발송을 방지한다.)
+    가드/멱등:
+      - 석간이 발행된 이슈에만 발송(순서 보장).
+      - 발송 성공 시 이슈에 숨김 마커(HTML 주석)를 남겨 하루 1회만 발송(중복 방지).
     """
     from .dedup import generate_consolidated_report
 
@@ -445,26 +449,44 @@ def send_consolidated_email() -> None:
     base_title = os.environ.get("ISSUE_TITLE_BASE", "AI학습데이터 저작권 소송 모니터링")
     issue_label = os.environ.get("ISSUE_LABEL", "ai-lawsuit-monitor")
 
-    # 당일(KST) 이슈 제목 조립 — main()과 동일한 규칙
+    # 대상 이슈 찾기 — 예약 실행이 GitHub 지연으로 KST 자정을 넘겨 '다음 날 새벽'에
+    # 실행되면, 오늘 이슈는 아직 생성 전이거나 석간이 없다(→ 과거엔 여기서 skip 되어
+    # 통합 정리 이메일이 미발송됐다). 이를 막기 위해 오늘 → 어제 순으로 '석간이 발행된'
+    # 이슈를 찾아, 지연되어도 통합 정리가 반드시 대상 이슈 기준으로 발송되게 한다.
     now_kst = datetime.now(ZoneInfo("Asia/Seoul"))
     weekdays_en = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-    weekday_str = weekdays_en[now_kst.weekday()]
-    issue_day_kst = f"{now_kst.strftime('%Y-%m-%d')} {weekday_str}"
-    issue_title = f"{base_title} ({issue_day_kst})"
 
-    # 당일 이슈를 '찾기만' 한다(없으면 생성하지 않고 건너뜀)
-    issues = list_issues_by_label(owner, repo, gh_token, issue_label, state="open", per_page=50)
-    issue_no = next((int(it["number"]) for it in issues if it.get("title") == issue_title), None)
+    def _title_for(d: datetime) -> str:
+        return f"{base_title} ({d.strftime('%Y-%m-%d')} {weekdays_en[d.weekday()]})"
+
+    # 전일 이슈는 이미 Close 됐을 수 있으므로 state='all' 로 조회(최근 생성순).
+    issues = list_issues_by_label(owner, repo, gh_token, issue_label, state="all", per_page=50)
+    by_title = {it.get("title"): it for it in issues}
+
+    CONSOLIDATED_MARKER = "<!-- consolidated-email-sent -->"
+    issue_no = None
+    comments: list[dict] = []
+    target_date = now_kst
+    for offset in (0, 1):  # 오늘 → 어제
+        d = now_kst - timedelta(days=offset)
+        it = by_title.get(_title_for(d))
+        if not it:
+            continue
+        no = int(it["number"])
+        cmts = list_comments(owner, repo, gh_token, no)
+        # 석간뉴스가 이미 발행된 뒤에만 통합 정리를 보낸다(순서 보장).
+        if any("(석간뉴스" in (c.get("body") or "") for c in cmts):
+            issue_no, comments, target_date = no, cmts, d
+            break
+
     if issue_no is None:
-        debug_log(f"통합 정리 이메일: 당일 이슈('{issue_title}')를 찾지 못해 발송을 건너뜁니다.")
+        debug_log("통합 정리 이메일: 석간이 발행된 당일/전일 이슈를 찾지 못해 발송을 건너뜁니다.")
         return
 
-    comments = list_comments(owner, repo, gh_token, issue_no)
-
-    # 가드: 석간뉴스가 이미 발행된 뒤에만 통합 정리 이메일을 보낸다.
-    evening_already = any("(석간뉴스" in (c.get("body") or "") for c in comments)
-    if not evening_already:
-        debug_log("통합 정리 이메일: 당일 석간뉴스가 아직 없어 발송을 건너뜁니다.")
+    # 멱등: 이미 이 이슈로 통합 정리를 발송했다면(숨김 마커) 재발송하지 않는다.
+    # (지연 실행·수동 재실행이 겹쳐도 하루 1회만 나가도록 보장)
+    if any(CONSOLIDATED_MARKER in (c.get("body") or "") for c in comments):
+        debug_log(f"통합 정리 이메일: 이슈 #{issue_no}에 이미 발송 기록이 있어 건너뜁니다.")
         return
 
     report = generate_consolidated_report(comments)
@@ -485,10 +507,16 @@ def send_consolidated_email() -> None:
     except Exception as e:
         debug_log(f"통합 정리: 데이터셋 현황 섹션 생성 실패(무시): {e}")
 
-    subject = f"[AI 학습데이터 소송] {now_kst.strftime('%Y-%m-%d')} 당일 소송건들 통합 정리 자료"
+    subject = f"[AI 학습데이터 소송] {target_date.strftime('%Y-%m-%d')} 당일 소송건들 통합 정리 자료"
     try:
-        send_email_report(subject, report, report_type="consolidated")
-        debug_log(f"Issue #{issue_no} 당일 소송건들 통합 정리 이메일 발송 완료")
+        sent = send_email_report(subject, report, report_type="consolidated")
+        if sent:
+            debug_log(f"Issue #{issue_no} 당일 소송건들 통합 정리 이메일 발송 완료")
+            # 발송 '성공' 시에만 멱등 마커를 남겨(숨김 HTML 주석) 재발송을 막는다.
+            try:
+                create_comment(owner, repo, gh_token, issue_no, CONSOLIDATED_MARKER)
+            except Exception as me:
+                debug_log(f"통합 정리: 발송 마커 등록 실패(무시): {me}")
     except Exception as email_err:
         print(f"[ERROR] 통합 정리 이메일 발송 중 예외 발생: {email_err}")
 
