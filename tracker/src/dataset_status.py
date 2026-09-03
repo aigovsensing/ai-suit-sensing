@@ -14,11 +14,13 @@ from __future__ import annotations
     데이터셋 이름만 추출 → 목록으로 제공(연관 소송 개별 매핑은 생략).
 """
 import html
+import os
 import re
 from dataclasses import asdict, is_dataclass
 from typing import Dict, List, Optional, Sequence
 
 from .complaint_parse import extract_dataset_names, dataset_url
+from .dataset_catalog import upsert_dataset_catalog
 
 # CourtListener 루트(도켓 상대경로 → 절대 URL 변환용). courtlistener.BASE 와 동일하나,
 # 무거운 import 체인(pypdf 등)을 피하려 여기서 상수로 둔다.
@@ -197,6 +199,16 @@ def _merge_aggregates(target: Dict[str, dict], source: Dict[str, dict]) -> None:
                 slot["evidence"].append(proof)
 
 
+def _persist_if_configured(agg: Dict[str, dict]) -> None:
+    """Persist collection runs only; ordinary rendering and tests have no side effects."""
+    path = os.getenv("DATASET_CATALOG_PATH", "").strip()
+    if not path:
+        return
+    for item in agg.values():
+        item["official_url"] = dataset_url(item["name"])
+    upsert_dataset_catalog(agg, path)
+
+
 def _render_evidence(evidence: List[tuple]) -> str:
     """소장 링크를 우선해 서로 다른 출처를 최대 3개까지 표시한다."""
     ordered = sorted(
@@ -349,6 +361,7 @@ def build_dataset_status_section(
         _merge_aggregates(agg, _aggregate_from_hits(hits))
         for name in extract_dataset_names(text or ""):
             agg.setdefault(name.casefold(), {"name": name, "cases": [], "evidence": []})
+        _persist_if_configured(agg)
         return _render(agg, header, show_cases=True)
     except Exception:
         return ""

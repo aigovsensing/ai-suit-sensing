@@ -16,6 +16,7 @@ on:
       - "dashboard/timeline/**"
       - "dashboard/collector/**"
       - "dashboard/scripts/build_pages.py"
+      - "tracker/data/risky-open-datasets.csv"
       - ".github/workflows/pages.yml"
   workflow_dispatch: {}
 
