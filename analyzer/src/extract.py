@@ -133,14 +133,21 @@ _last_call_at = 0.0
 def _is_rate_limit_error(exc: Exception) -> bool:
     name = type(exc).__name__
     msg = str(exc)
+    if _is_permanent_billing_error(exc):
+        return False
+    return name == "ResourceExhausted" or "429" in msg or "quota" in msg.lower()
+
+
+def _is_permanent_billing_error(exc: Exception) -> bool:
+    """결제 조치 없이는 모델을 바꿔도 회복되지 않는 오류인지 판별한다."""
+    msg = str(exc).lower()
     permanent_billing_terms = (
         "prepayment credits are depleted",
         "billing account",
         "payment required",
+        "billing-enabled project",
     )
-    if any(term in msg.lower() for term in permanent_billing_terms):
-        return False
-    return name == "ResourceExhausted" or "429" in msg or "quota" in msg.lower()
+    return any(term in msg for term in permanent_billing_terms)
 
 
 def _generate_throttled(gm, prompt: str):
@@ -187,7 +194,12 @@ def extract_with_llm(text: str, model: str = "gemini-2.5-flash") -> List[Dict[st
             resp = _generate_throttled(gm, prompt)
             raw = _parse_json_array(getattr(resp, "text", "") or "")
             return [_validate(r) for r in raw if isinstance(r, dict)]
-        except Exception:  # noqa: BLE001 - 폴백 판단용
+        except Exception as exc:  # noqa: BLE001 - 폴백 판단용
+            if _is_permanent_billing_error(exc):
+                # 모든 모델이 동일 프로젝트 잔액을 공유한다. 다음 모델 호출은 동일한
+                # 결제 오류만 반복하므로, 오류 문구를 사용자 보고서에 노출하지 않고 종료한다.
+                print("[!] Gemini 결제 잔액을 사용할 수 없어 LLM 추출을 건너뜁니다.")
+                break
             # 429 재시도 소진 또는 그 외 오류 → 폴백 체인의 다음 모델로 넘어간다.
             continue
     return []

@@ -29,7 +29,7 @@ export GITHUB_TOKEN=...      # 이슈 수집용
 # export GEMINI_MODEL_FALLBACKS="gemini-3.5-flash-lite,gemini-flash-latest,gemini-2.5-flash"
 ```
 
-> 무료 티어·폴백 체인·재시도 동작은 루트 [README의 「Gemini 무료 티어 & 폴백 전략」](../README.md#-gemini-무료-티어--폴백-전략)을 참고하세요. 1차 모델이 429(쿼터 소진)/일시 오류로 실패하면 자동으로 다음 모델로 폴백합니다.
+> 무료 티어·폴백 체인·재시도 동작은 루트 [README의 「Gemini 무료 티어 & 폴백 전략」](../README.md#-gemini-무료-티어--폴백-전략)을 참고하세요. 일시적인 429는 재시도·폴백하지만, 선결제 잔액 소진은 모델을 변경해도 회복되지 않으므로 한 번 감지하면 LLM 추출을 조용히 건너뜁니다.
 
 ## 사용법
 
