@@ -133,6 +133,13 @@ _last_call_at = 0.0
 def _is_rate_limit_error(exc: Exception) -> bool:
     name = type(exc).__name__
     msg = str(exc)
+    permanent_billing_terms = (
+        "prepayment credits are depleted",
+        "billing account",
+        "payment required",
+    )
+    if any(term in msg.lower() for term in permanent_billing_terms):
+        return False
     return name == "ResourceExhausted" or "429" in msg or "quota" in msg.lower()
 
 
