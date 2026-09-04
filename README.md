@@ -354,10 +354,14 @@ dashboard/
 
 무료 API 키를 발급받아 다음 위치에 등록합니다.
 
-- **GitHub Actions**: `Settings → Secrets and variables → Actions` 에 Secret `GEMINI_API_KEY` 등록
+- **GitHub Actions**: `Settings → Secrets and variables → Actions` 에 Secret `GEMINI_API_KEY` (또는 `GEMINI_API_KEY_xxxx`) 등록
 - **로컬 실행**: 환경변수 `export GEMINI_API_KEY=...`
 
-키가 없으면 AI 기능(요약·추출·보고서)만 건너뛰고 나머지 파이프라인은 정상 동작합니다.
+키가 없으면 AI 기능(요약·추출·보고서)만 건너뛰고 나머지 파이프라인은 정상 동작합니다. 다중 키를 등록하여 쿼터 소진에 대비할 수 있습니다 (아래 팁 참고).
+
+> 💡 **Tip (다중 계정 키 자동 폴백 방어)**
+> 무료 쿼터(RPD) 소진에 대비해 여러 개의 구글 계정으로 발급받은 API 키를 등록하려면, 환경변수명을 `GEMINI_API_KEY`로 시작하게 지정하세요. (예: `GEMINI_API_KEY`, `GEMINI_API_KEY_idaaa`, `GEMINI_API_KEY_idbbb` 등).  
+> 시스템은 변수명을 **알파벳 오름차순**으로 정렬하여 순차적으로 시도하며, 한 키의 쿼터가 소진되면 즉시 다음 키를 사용해 LLM을 호출하므로 파이프라인이 멈추지 않습니다.
 
 ### 모델 선택 & 폴백 체인
 

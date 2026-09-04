@@ -41,11 +41,19 @@ for name in ["uvicorn", "uvicorn.error", "uvicorn.access"]:
 
 logger = logging.getLogger(__name__)
 
+def get_all_gemini_keys() -> List[str]:
+    """환경변수에서 GEMINI_API_KEY로 시작하는 모든 키를 이름 오름차순으로 반환한다."""
+    keys = []
+    for k, v in os.environ.items():
+        if k.startswith("GEMINI_API_KEY") and v.strip():
+            keys.append((k, v.strip()))
+    keys.sort(key=lambda x: x[0])
+    return [v for k, v in keys]
+
 # Gemini Config
-api_key = os.environ.get("GEMINI_API_KEY")
-if api_key:
-    genai.configure(api_key=api_key)
-    logger.info("Gemini API configured.")
+available_api_keys = get_all_gemini_keys()
+if available_api_keys:
+    logger.info(f"Found {len(available_api_keys)} Gemini API Key(s) for rotation.")
 else:
     logger.warning("GEMINI_API_KEY not found. Report generation will fail.")
 
@@ -396,7 +404,7 @@ def generate_report(request: dict):
     month = request.get("month") # YYYY-MM
     file_name = request.get("file_name")
 
-    if not api_key:
+    if not get_all_gemini_keys():
         raise HTTPException(status_code=500, detail="Gemini API Key not configured")
 
     if file_name:
@@ -495,32 +503,40 @@ def generate_report(request: dict):
     base_delay = 2.0  # seconds
     last_error = None
 
-    for current_model in get_gemini_fallback_models():
-        for attempt in range(max_retries):
-            try:
-                model = genai.GenerativeModel(
-                    model_name=current_model,
-                    safety_settings=safety_settings,
-                )
-                response = model.generate_content(prompt)
+    for current_key in get_all_gemini_keys():
+        genai.configure(api_key=current_key)
+        for current_model in get_gemini_fallback_models():
+            for attempt in range(max_retries):
+                try:
+                    model = genai.GenerativeModel(
+                        model_name=current_model,
+                        safety_settings=safety_settings,
+                    )
+                    response = model.generate_content(prompt)
 
-                if response.candidates and response.candidates[0].content.parts:
-                    logger.info(f"Report generated successfully for {month} ({report_type}) via {current_model}")
-                    return {"report": response.text}
+                    if response.candidates and response.candidates[0].content.parts:
+                        logger.info(f"Report generated successfully for {month} ({report_type}) via {current_model}")
+                        return {"report": response.text}
 
-                logger.error("Gemini response blocked or no candidates. This might be due to content safety filters.")
-                return {"report": "### 보고서 생성 실패\n\nGemini AI의 응답이 차단되었습니다. 데이터의 민감도 설정을 확인하거나, 질문 내용을 검토해주세요."}
+                    logger.error("Gemini response blocked or no candidates. This might be due to content safety filters.")
+                    return {"report": "### 보고서 생성 실패\n\nGemini AI의 응답이 차단되었습니다. 데이터의 민감도 설정을 확인하거나, 질문 내용을 검토해주세요."}
 
-            except Exception as e:  # noqa: BLE001 - 폴백/재시도 판단용
-                last_error = e
-                logger.warning(f"Gemini API Error (model={current_model}, attempt={attempt + 1}/{max_retries}): {e}")
-                if _is_transient_gemini_error(e) and attempt < max_retries - 1:
-                    time.sleep(base_delay * (2 ** attempt))
-                    continue
-                # 일시적이지 않거나 재시도 소진 → 다음 폴백 모델로
-                break
+                except Exception as e:  # noqa: BLE001 - 폴백/재시도 판단용
+                    last_error = e
+                    logger.warning(f"Gemini API Error (model={current_model}, attempt={attempt + 1}/{max_retries}): {e}")
+                    if _is_transient_gemini_error(e) and attempt < max_retries - 1:
+                        time.sleep(base_delay * (2 ** attempt))
+                        continue
+                    break
+            
+            # 재시도 소진 후 에러 검사: 429(쿼터 소진) 또는 결제 오류이면 다음 Key로 전환
+            if last_error:
+                e_str = str(last_error).lower()
+                if "429" in e_str or "quota" in e_str or "prepayment" in e_str or "billing" in e_str:
+                    logger.warning("Quota or billing error detected. Switching to next API Key.")
+                    break # 현재 Key의 모델 루프 탈출 -> 다음 Key 시도
 
-    logger.error(f"Gemini API Error (모든 폴백 모델 실패): {last_error}")
+    logger.error(f"Gemini API Error (모든 Key 및 폴백 모델 실패): {last_error}")
     raise HTTPException(status_code=500, detail=f"Gemini API Error: {last_error}")
 
 @app.post("/api/report/download")

@@ -167,41 +167,51 @@ def _generate_throttled(gm, prompt: str):
             time.sleep(delay_on_fail)
 
 
+def get_gemini_api_keys() -> List[str]:
+    """환경변수에서 GEMINI_API_KEY로 시작하는 모든 키를 이름 오름차순으로 정렬하여 반환한다."""
+    keys = []
+    for k, v in os.environ.items():
+        if k.startswith("GEMINI_API_KEY") and v.strip():
+            keys.append((k, v.strip()))
+    keys.sort(key=lambda x: x[0])
+    return [v for k, v in keys]
+
+
 def extract_with_llm(text: str, model: str = "gemini-flash-latest") -> List[Dict[str, str]]:
     """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록.
 
     같은 키를 tracker(매시간 센싱)와 공유하므로 호출 간 최소 간격을 지키고 429 는
     긴 지수 백오프로 재시도한다(_generate_throttled). 한 모델의 재시도가 모두
-    소진되면 폴백 체인(GEMINI_MODEL_FALLBACKS)의 다음 모델로 넘어간다.
+    소진되거나 API 키 자체의 쿼터가 소진되면 다음 API 키 및 다음 모델로 넘어간다.
     """
-    api_key = os.environ.get("GEMINI_API_KEY", "")
-    if not api_key:
+    api_keys = get_gemini_api_keys()
+    if not api_keys:
         return []
     try:
         import google.generativeai as genai  # type: ignore
     except Exception:
         return []
 
-    genai.configure(api_key=api_key)
     prompt = _PROMPT.format(keys="\n".join(f'- "{k}"' for k in EXTRACT_KEYS), text=text[:60000])
 
     # 환경변수 GEMINI_MODEL 이 있으면 호출부가 넘긴 model 보다 우선한다.
     primary = os.environ.get("GEMINI_MODEL") or model
 
-    for current_model in _fallback_models(primary):
-        try:
-            gm = genai.GenerativeModel(current_model)
-            resp = _generate_throttled(gm, prompt)
-            raw = _parse_json_array(getattr(resp, "text", "") or "")
-            return [_validate(r) for r in raw if isinstance(r, dict)]
-        except Exception as exc:  # noqa: BLE001 - 폴백 판단용
-            if _is_permanent_billing_error(exc):
-                # 모든 모델이 동일 프로젝트 잔액을 공유한다. 다음 모델 호출은 동일한
-                # 결제 오류만 반복하므로, 오류 문구를 사용자 보고서에 노출하지 않고 종료한다.
-                print("[!] Gemini 결제 잔액을 사용할 수 없어 LLM 추출을 건너뜁니다.")
-                break
-            # 429 재시도 소진 또는 그 외 오류 → 폴백 체인의 다음 모델로 넘어간다.
-            continue
+    for api_key in api_keys:
+        genai.configure(api_key=api_key)
+        for current_model in _fallback_models(primary):
+            try:
+                gm = genai.GenerativeModel(current_model)
+                resp = _generate_throttled(gm, prompt)
+                raw = _parse_json_array(getattr(resp, "text", "") or "")
+                return [_validate(r) for r in raw if isinstance(r, dict)]
+            except Exception as exc:  # noqa: BLE001 - 폴백 판단용
+                msg = str(exc).lower()
+                if _is_permanent_billing_error(exc) or "429" in msg or "quota" in msg:
+                    print(f"[!] API Key 쿼터 소진 또는 결제 오류. 다음 API Key로 전환합니다.")
+                    break  # 현재 Key 포기, 다음 Key 시도 (모델 루프 탈출)
+                # 503 등 그 외 일시 오류 재시도 소진 → 동일 Key의 다음 모델로 폴백
+                continue
     return []
 
 
