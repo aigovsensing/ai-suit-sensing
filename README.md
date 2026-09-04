@@ -364,7 +364,7 @@ dashboard/
 기본 1차 모델은 `gemini-flash-latest`(최신 Flash로 자동 해석)입니다. 1차 모델이 **429(쿼터 소진)** 또는 **일시적 오류**로 실패하면, **품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5)** 순서로 자동 폴백합니다.
 
 ```
-gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash → gemini-2.5-flash-lite
+gemini-3.5-flash-lite → gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash
        (품질 우선, 최신)  ─────────────────────────────────────────▶  (안정성 우선, 무료 쿼터 큼)
 ```
 
@@ -389,9 +389,9 @@ Google은 정확한 무료 RPD(일일 요청 수)를 더 이상 공개 문서에
 |---|---|---|
 | `gemini-3.5-flash` | 최신·고품질 | 작음 |
 | `gemini-2.5-flash` | 안정적 | ~250 RPD |
-| `gemini-2.5-flash-lite` | 무료 쿼터 가장 큼 | ~1,000 RPD |
+| `gemini-3.5-flash-lite` | 최신 경량 Flash 모델 | 프로젝트 설정에 따라 다름 |
 
-> 무료 티어 범위 내라면 비용은 **$0** 입니다. 쿼터가 크게 필요할 경우 `GEMINI_MODEL=gemini-2.5-flash-lite` 로 1차 모델을 바꾸는 것을 권장합니다.
+> 폐기된 `gemini-2.5-flash-lite`는 신규 사용자에게 404를 반환합니다. 설정에 이전 이름이 남아 있어도 코드에서 `gemini-3.5-flash-lite`로 자동 교정합니다.
 
 구현 위치: `tracker/src/gemini.py`(`get_gemini_fallback_models`), `analyzer-tba/src/extract.py`(`extract_with_llm`), `dashboard/backend/main.py`(`get_gemini_fallback_models`).
 

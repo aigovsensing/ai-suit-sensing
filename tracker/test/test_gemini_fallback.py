@@ -2,11 +2,21 @@ import os
 import unittest
 from unittest.mock import MagicMock, patch
 
-from src.gemini import get_gemini_summary
+from src.gemini import get_gemini_fallback_models, get_gemini_summary
 from src.trend import generate_trend_summary
 
 
 class GeminiFallbackTest(unittest.TestCase):
+    def test_retired_lite_model_is_replaced_even_when_configured(self):
+        env = {
+            "GEMINI_MODEL": "models/gemini-2.5-flash-lite",
+            "GEMINI_MODEL_FALLBACKS": "gemini-2.5-flash-lite,gemini-3.5-flash",
+        }
+        with patch.dict(os.environ, env, clear=True):
+            models = get_gemini_fallback_models()
+        self.assertEqual(models, ["gemini-3.5-flash-lite", "gemini-3.5-flash"])
+        self.assertNotIn("gemini-2.5-flash-lite", models)
+
     def test_missing_key_returns_caller_fallback(self):
         with patch.dict(os.environ, {}, clear=True):
             self.assertEqual(get_gemini_summary("prompt", "local report"), "local report")

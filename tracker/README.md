@@ -84,7 +84,7 @@ BM25 알고리즘을 활용한 로컬 텍스트 분석 및 Gemini API를 연동�
 | `GEMINI_SEMANTIC_DEDUP` | **Variable** | `0` | **설정 시 의미론적 중복 제거 활성화.** (1: 활성화, 0: 비활성화, 실행당 약 2회 Embedding API 호출) |
 | `SEMANTIC_DEDUP_THRESHOLD` | **Variable** | `0.85` | 의미론적 중복 판정 임계값 (0.0~1.0, 높을수록 엄격) |
 | `GEMINI_MODEL` | **Variable** | `gemini-flash-latest` | 1차로 사용할 Gemini 모델명. 429/일시 오류 시 폴백 체인으로 자동 전환됩니다. |
-| `GEMINI_MODEL_FALLBACKS` | **Variable** | (공백) | 폴백 체인 재정의(쉼표 구분). 미지정 시 기본: `gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash → gemini-2.5-flash-lite` |
+| `GEMINI_MODEL_FALLBACKS` | **Variable** | (공백) | 폴백 체인 재정의(쉼표 구분). 미지정 시 기본: `gemini-3.5-flash-lite → gemini-flash-latest → gemini-3.5-flash → gemini-3.1-flash-lite → gemini-2.5-flash`. 폐기된 `gemini-2.5-flash-lite`가 설정되어 있으면 자동으로 3.5 Lite로 교정됩니다. |
 
 > Gemini 키가 없거나 API 호출·쿼터가 실패하면 이메일 발송을 실패 경고로 대체하지 않고,
 > 수집된 뉴스와 공개 도켓만 이용한 데이터 기반 요약을 자동 생성합니다. 선결제 잔액 소진은
