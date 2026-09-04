@@ -124,6 +124,16 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .export-tools button { border:1px solid var(--border); border-radius:7px; background:var(--card); color:var(--text);
   padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; }
 .export-tools button:hover { border-color:var(--blue); color:var(--blue); }
+.board-title-row { display:flex; align-items:flex-start; justify-content:space-between; gap:14px; margin-bottom:14px; }
+.board-title-row h2 { margin-bottom:0; }
+.export-panel { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:8px 10px;
+  border:1px solid var(--border); border-radius:10px; background:var(--track); }
+.export-panel .export-label { font-size:12px; font-weight:800; color:var(--dim); white-space:nowrap; }
+.export-panel button { background:var(--card); padding:7px 11px; }
+@media (max-width:700px) {
+  .board-title-row { flex-direction:column; }
+  .export-panel { width:100%; }
+}
 table.cases { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.cases th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 700;
                  padding: 8px 10px; border-bottom: 1px solid var(--border); }
@@ -202,6 +212,13 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
           <p>소장·기사에서 명시적으로 식별된 데이터셋을 이름별로 통합했습니다. 실제 사용 전 사건 근거와 라이선스를 확인하세요.</p></div>
         <div><span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span></div>
       </div>
+      <div class="export-tools export-panel" aria-label="데이터셋 현황 파일 저장">
+        <span class="export-label">⬇ 파일로 저장</span>
+        <button type="button" onclick="exportBoard('datasets','csv')">CSV 저장</button>
+        <button type="button" onclick="exportBoard('datasets','xlsx')">XLSX 저장</button>
+        <button type="button" onclick="exportBoard('datasets','docx')">DOCX 저장</button>
+        <button type="button" onclick="exportBoard('datasets','pdf')">PDF 저장</button>
+      </div>
       <div class="toolbar">
         <input id="datasetQ" type="search" placeholder="🔍 데이터셋 / 소송명 / 근거 검색...">
         <select id="datasetPageSize" title="한 페이지 출력 건수">
@@ -209,10 +226,6 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
           <option value="20">20개씩</option><option value="30">30개씩</option>
           <option value="50">50개씩</option><option value="70">70개씩</option><option value="100">100개씩</option>
         </select>
-        <div class="export-tools" aria-label="데이터셋 현황 저장">
-          <button onclick="exportBoard('datasets','csv')">CSV</button><button onclick="exportBoard('datasets','xlsx')">XLSX</button>
-          <button onclick="exportBoard('datasets','docx')">DOCX</button><button onclick="exportBoard('datasets','pdf')">PDF</button>
-        </div>
         <span class="count" id="datasetCount"></span>
       </div>
       <div class="dataset-table-wrap"><table class="datasets">
@@ -240,7 +253,16 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
     </div>
 
     <div class="card">
-      <h2>📋 전체 소송 목록</h2>
+      <div class="board-title-row">
+        <h2>📋 전체 소송 목록</h2>
+        <div class="export-tools export-panel" aria-label="전체 소송 목록 파일 저장">
+          <span class="export-label">⬇ 파일로 저장</span>
+          <button type="button" onclick="exportBoard('cases','csv')">CSV 저장</button>
+          <button type="button" onclick="exportBoard('cases','xlsx')">XLSX 저장</button>
+          <button type="button" onclick="exportBoard('cases','docx')">DOCX 저장</button>
+          <button type="button" onclick="exportBoard('cases','pdf')">PDF 저장</button>
+        </div>
+      </div>
       <div class="toolbar">
         <input id="q" type="search" placeholder="🔍 소송명 / 피고 / 소송번호 검색...">
         <select id="fCountry"><option value="">전체 국가</option></select>
@@ -255,10 +277,6 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
           <option value="70">70개씩</option>
           <option value="1000">1000개씩</option>
         </select>
-        <div class="export-tools" aria-label="전체 소송 목록 저장">
-          <button onclick="exportBoard('cases','csv')">CSV</button><button onclick="exportBoard('cases','xlsx')">XLSX</button>
-          <button onclick="exportBoard('cases','docx')">DOCX</button><button onclick="exportBoard('cases','pdf')">PDF</button>
-        </div>
         <span class="count" id="tblCount"></span>
       </div>
       <table class="cases">
