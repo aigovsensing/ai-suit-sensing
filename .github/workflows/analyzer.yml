@@ -45,6 +45,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          # 2.5 Flash Lite는 신규 사용자에게 404를 반환하므로 현행 Lite를 기본 사용한다.
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-3.5-flash-lite' }}
+          GEMINI_MODEL_FALLBACKS: ${{ vars.GEMINI_MODEL_FALLBACKS || 'gemini-3.5-flash-lite,gemini-flash-latest,gemini-3.5-flash,gemini-3.1-flash-lite,gemini-2.5-flash' }}
         run: |
           python -m src.run analyze --limit "${{ github.event.inputs.limit || '3' }}" --write-candidate
 

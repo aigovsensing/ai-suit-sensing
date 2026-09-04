@@ -8,12 +8,21 @@ from .utils import debug_log
 # 무료 티어 폴백 체인: 품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5) 순으로 내려간다.
 # 1차 모델이 429(쿼터 소진) 또는 사용 불가일 때 순차적으로 다음 모델로 폴백한다.
 DEFAULT_FALLBACK_CHAIN = [
+    "gemini-3.5-flash-lite",
     "gemini-flash-latest",   # → 최신 Flash(현재 3.5)로 자동 해석
     "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",      # 무료 쿼터 큼(~250 RPD)
-    "gemini-2.5-flash-lite", # 무료 쿼터 가장 큼(~1,000 RPD)
 ]
+
+RETIRED_MODEL_REPLACEMENTS = {
+    "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+    "models/gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+}
+
+def _supported_model(name: str) -> str:
+    """환경 변수에 남은 폐기 모델명을 현재 권장 모델로 교정합니다."""
+    return RETIRED_MODEL_REPLACEMENTS.get(name.strip(), name.strip())
 
 def get_gemini_model_name() -> str:
     """
@@ -36,7 +45,8 @@ def get_gemini_fallback_models() -> List[str]:
     fallbacks = [m.strip() for m in raw.split(",") if m.strip()] or DEFAULT_FALLBACK_CHAIN
 
     ordered: List[str] = []
-    for name in [primary, *fallbacks]:
+    for configured_name in [primary, *fallbacks]:
+        name = _supported_model(configured_name)
         if name not in ordered:
             ordered.append(name)
     return ordered

@@ -20,12 +20,23 @@ from . import csv_store as cs
 # 무료 티어 폴백 체인: 품질 우선(최신 3.x) → 안정성(무료 쿼터가 큰 2.5) 순으로 내려간다.
 # tracker/src/gemini.py 와 동일한 계약(GEMINI_MODEL / GEMINI_MODEL_FALLBACKS)을 따른다.
 DEFAULT_FALLBACK_CHAIN = [
+    "gemini-3.5-flash-lite",
     "gemini-flash-latest",
     "gemini-3.5-flash",
     "gemini-3.1-flash-lite",
     "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
 ]
+
+# Google은 신규 사용자에 대한 2.5 Flash Lite 제공을 종료했다. 저장소 Variable에
+# 예전 값이 남아 있어도 404를 반복하지 않도록 현재 대체 모델로 투명하게 치환한다.
+RETIRED_MODEL_REPLACEMENTS = {
+    "gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+    "models/gemini-2.5-flash-lite": "gemini-3.5-flash-lite",
+}
+
+
+def _supported_model(name: str) -> str:
+    return RETIRED_MODEL_REPLACEMENTS.get(name.strip(), name.strip())
 
 
 def _fallback_models(primary: str) -> List[str]:
@@ -33,7 +44,8 @@ def _fallback_models(primary: str) -> List[str]:
     raw = os.environ.get("GEMINI_MODEL_FALLBACKS", "")
     fallbacks = [m.strip() for m in raw.split(",") if m.strip()] or DEFAULT_FALLBACK_CHAIN
     ordered: List[str] = []
-    for name in [primary, *fallbacks]:
+    for configured_name in [primary, *fallbacks]:
+        name = _supported_model(configured_name)
         if name not in ordered:
             ordered.append(name)
     return ordered
