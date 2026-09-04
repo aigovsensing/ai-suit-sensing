@@ -167,7 +167,7 @@ def _generate_throttled(gm, prompt: str):
             time.sleep(delay_on_fail)
 
 
-def extract_with_llm(text: str, model: str = "gemini-2.5-flash") -> List[Dict[str, str]]:
+def extract_with_llm(text: str, model: str = "gemini-flash-latest") -> List[Dict[str, str]]:
     """Gemini 로 소송 레코드를 추출한다. 키 없으면 빈 목록.
 
     같은 키를 tracker(매시간 센싱)와 공유하므로 호출 간 최소 간격을 지키고 429 는
