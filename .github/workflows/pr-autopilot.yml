@@ -1,0 +1,76 @@
+name: PR autopilot (auto approve/merge or close)
+
+# 사람이 개입하지 않도록 PR을 자동 처리하는 일반 정책 워크플로.
+#   - 신뢰 작성자(저장소 owner/member/collaborator 또는 저장소 봇)의 '병합 가능한' PR
+#     → 자동 승인(approve) + 자동 병합(squash)
+#   - 그 외(외부/신뢰불가 작성자, 베이스와 충돌 등 부적절)
+#     → 사유를 코멘트로 남기고 자동 close
+#
+# 도메인 전용 리뷰어(review-lawsuit-data-pr.yml)가 신뢰도 기반으로 처리하는
+# '소송 데이터 갱신 제안'(analyzer) PR은 중복 처리를 피하려고 여기서 제외한다.
+#
+# pull_request_target 로 신뢰된 base(main) 컨텍스트에서 실행하며, PR 코드는 절대
+# 체크아웃/실행하지 않고 gh CLI 로 메타데이터만 다룬다(포크 PR에도 안전).
+
+on:
+  pull_request_target:
+    types: [opened, reopened, ready_for_review, synchronize]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: pr-autopilot-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  autopilot:
+    # analyzer 데이터 제안 PR은 전용 리뷰어가 처리 → 제외
+    if: >-
+      ${{ !startsWith(github.event.pull_request.title, '소송 데이터 갱신 제안')
+      && !startsWith(github.event.pull_request.title, '🤖 소송 데이터 갱신 제안') }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Auto approve/merge or close with reason
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          ASSOC: ${{ github.event.pull_request.author_association }}
+          IS_DRAFT: ${{ github.event.pull_request.draft }}
+        run: |
+          set -uo pipefail
+          echo "PR #$PR by @$AUTHOR (association=$ASSOC, draft=$IS_DRAFT)"
+          FOOTER=$'\n\n---\n_🤖 이 처리는 PR 오토파일럿(자동 정책)에 의해 사람 개입 없이 수행되었습니다._'
+          # 1) 초안(draft)은 아직 작업 중 → 대기(아무 것도 하지 않음)
+          if [ "$IS_DRAFT" = "true" ]; then echo "draft → skip"; exit 0; fi
+          # 2) 신뢰 작성자 판정 (권한 또는 알려진 저장소 봇/소유자 계정)
+          TRUSTED=false
+          case "$ASSOC" in OWNER|MEMBER|COLLABORATOR) TRUSTED=true ;; esac
+          case "$AUTHOR" in "github-actions[bot]"|"analyzer[bot]"|"leemgs") TRUSTED=true ;; esac
+          if [ "$TRUSTED" != "true" ]; then
+            printf -v REASON '이 PR은 **신뢰된 작성자**(저장소 owner/member/collaborator 또는 저장소 봇)의 PR이 아니어서 자동 승인·병합할 수 없습니다. (작성자: @%s, 권한: %s)\n\n변경 반영이 필요하면 저장소 관리자가 직접 검토·병합해 주세요.' "$AUTHOR" "$ASSOC"
+            gh pr close "$PR" -R "$REPO" --comment "${REASON}${FOOTER}" || gh pr comment "$PR" -R "$REPO" --body "자동 close 에 실패했습니다. 수동 확인이 필요합니다.${FOOTER}"
+            echo "untrusted author → closed"; exit 0
+          fi
+          # 3) 병합 가능 상태 확인 (계산 지연 대비 재시도)
+          get_mergeable() { gh pr view "$PR" -R "$REPO" --json mergeable -q .mergeable 2>/dev/null || echo UNKNOWN; }
+          MERGEABLE="$(get_mergeable)"
+          for _ in 1 2 3; do [ "$MERGEABLE" = "UNKNOWN" ] || break; sleep 8; MERGEABLE="$(get_mergeable)"; done
+          echo "mergeable=$MERGEABLE"
+          if [ "$MERGEABLE" = "CONFLICTING" ]; then
+            gh pr close "$PR" -R "$REPO" --comment "베이스 브랜치(main)와 **충돌**이 있어 자동 병합할 수 없습니다. 충돌을 해결한 새 PR로 다시 올려 주세요.${FOOTER}"
+            echo "conflicting → closed"; exit 0
+          fi
+          # 4) 자동 승인(자기 PR 등으로 불가하면 무시) 후 자동 병합
+          gh pr review "$PR" -R "$REPO" --approve --body "자동 정책에 따라 승인합니다.${FOOTER}" || echo "approve skipped (self-authored or not permitted)"
+          if gh pr merge "$PR" -R "$REPO" --squash --delete-branch; then
+            echo "merged"
+          else
+            # 신뢰 PR이지만 병합 실패(브랜치 보호/필수 체크 미통과 등)는 작업을 버리지 않고
+            # 사유만 남긴 채 열어 둔다(다음 커밋/재실행에서 재시도).
+            gh pr comment "$PR" -R "$REPO" --body "자동 승인은 했으나 **자동 병합에 실패**했습니다. 브랜치 보호 규칙 또는 필수 상태 체크(미통과/진행 중) 때문일 수 있습니다. 체크 통과 후 새 커밋이 올라오면 다시 시도합니다.${FOOTER}"
+            echo "merge failed → commented, left open for retry"
+          fi
