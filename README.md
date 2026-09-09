@@ -26,10 +26,10 @@ flowchart LR
     subgraph PIPE["ai-suit-sensing 모노레포"]
         direction LR
         T["📡 tracker<br/><b>센싱</b><br/>수집·탐지"]
-        A["🧪 analyzer<br/><b>분석·정리</b><br/>제안 생성 (사람 검토)"]
+        A["🧪 analyzer<br/><b>분석·정리</b><br/>제안 생성 → 자동 검토·병합"]
         D["📊 dashboard<br/><b>시각화</b><br/>열람·추적·조회"]
         T -->|GitHub Issue 리포트| A
-        A -->|"정본 CSV (PR 검토 후)"| D
+        A -->|"정본 CSV (자동 검증 통과분)"| D
     end
 
     RSS --> T
@@ -43,12 +43,61 @@ flowchart LR
 | 컴포넌트 | 역할 | 한 줄 설명 | 원본 저장소 |
 |---|---|---|---|
 | [`tracker/`](./tracker) | 📡 **센싱** | 뉴스·법원 DB에서 AI 소송을 자동 수집해 GitHub Issue/Slack 리포트로 발행 | [aigovsensing/ai-suit-tracker-v02](https://github.com/aigovsensing/ai-suit-tracker-v02) |
-| [`analyzer/`](./analyzer) | 🧪 **분석·정리** | 이슈 리포트를 정본 CSV와 대조해 변경 제안 생성 (반영은 사람 승인 후) | 본 모노레포 신규 추가 |
+| [`analyzer/`](./analyzer) | 🧪 **분석·정리** | 이슈 리포트를 정본 CSV와 대조해 변경 제안 생성 → 자동 리뷰어가 안전 기준 검증 후 자동 반영 | 본 모노레포 신규 추가 |
 | [`dashboard/`](./dashboard) | 📊 **시각화** | 정리된 CSV를 지도 히트맵·리니지 그래프·통계로 시각화 | [aigovsensing/ai-suit-dashboard](https://github.com/aigovsensing/ai-suit-dashboard) |
 
 | [📡 `tracker` — 센싱 리포트](./tracker) | [🧪 `analyzer` — 변경 제안 PR](./analyzer) | [📊 `dashboard` — 시각화](./dashboard) |
 | :---: | :---: | :---: |
-| ![Tracker — GitHub Issue 소송 센싱 리포트](./tracker/img/github_issue.png) | ![Analyzer — 변경 제안 PR (Human-in-the-Loop 검토)](./analyzer/img/analyzer_pr.png) | ![Dashboard — 소송 현황 인터랙티브 히트맵](./dashboard/img/dashboard.png) |
+| ![Tracker — GitHub Issue 소송 센싱 리포트](./tracker/img/github_issue.png) | ![Analyzer — 변경 제안 PR (자동 검증·병합)](./analyzer/img/analyzer_pr.png) | ![Dashboard — 소송 현황 인터랙티브 히트맵](./dashboard/img/dashboard.png) |
+
+---
+
+## 🎯 최종 목표 — 완전 무인 자동화 루프 (Fully Autonomous Loop)
+
+이 프로젝트의 **최종 목표**는 `tracker`(센싱) → `analyzer`(분석·정리) → `dashboard`(시각화)의 전 과정을
+**사람 개입 없이 완전 무인·자동으로 순환**시키는 것입니다. 수집부터 정본 CSV 반영, 공개 대시보드
+재배포까지 모두 GitHub Actions 위에서 자율적으로 돌며, 사람은 결과물(대시보드·이메일·이슈)을 **열람만**
+하면 됩니다.
+
+> **"무인"은 "무검증"이 아닙니다.** 소송 데이터는 법적 민감 정보이므로, 사람의 판단을 없애는 대신
+> **판단 기준을 코드로 못박아 자동 집행**합니다. 정본 보존·스키마·건수·출처 추적성 등 기계적 안전
+> 기준을 **모두 통과한 변경만 자동 merge**되고, 하나라도 어긋나면 사유를 댓글로 남기고 **자동 close**됩니다.
+
+```mermaid
+flowchart LR
+    subgraph LOOP["♻️ 무인 자동화 루프 (사람 개입 0)"]
+        direction LR
+        T["📡 tracker<br/><b>센싱</b><br/>cron 이중·삼중 슬롯"]
+        A["🧪 analyzer<br/><b>분석·제안</b><br/>매일 cron"]
+        R["✅ 자동 리뷰어<br/><b>검증·병합/닫기</b><br/>인라인 + sweep + autopilot"]
+        D["📊 dashboard<br/><b>재빌드·배포</b><br/>pages.yml / auto_pull.sh"]
+        T -->|"GitHub Issue"| A
+        A -->|"제안 PR"| R
+        R -->|"정본 CSV merge"| D
+        D -.->|"다음 주기 센싱"| T
+    end
+    style T fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
+    style A fill:#fef3c7,stroke:#f59e0b,color:#78350f
+    style R fill:#ede9fe,stroke:#8b5cf6,color:#4c1d95
+    style D fill:#dcfce7,stroke:#22c55e,color:#14532d
+```
+
+| 단계 | 무인화 장치 | 사람 개입 |
+|---|---|---|
+| 📡 **센싱** | [`lawsuit-monitor.yml`](./.github/workflows/lawsuit-monitor.yml) — cron 이중·삼중 슬롯으로 지연·누락에도 그날 안에 발행 | 없음 |
+| 🧪 **분석·제안** | [`analyzer.yml`](./.github/workflows/analyzer.yml) — 매일 KST 10:00 이슈 분석 → 변경 제안 PR 자동 생성 | 없음 |
+| ✅ **검토·반영** | 제안 PR 생성 직후 **인라인 자동 리뷰** + [`analyzer-pr-sweep.yml`](./.github/workflows/analyzer-pr-sweep.yml)(누락분 안전망) + [`pr-autopilot.yml`](./.github/workflows/pr-autopilot.yml)(일반 PR) | 없음 (기계 검증) |
+| 📊 **배포·시각화** | [`pages.yml`](./.github/workflows/pages.yml) — `main` push마다 GitHub Pages 자동 재빌드 / 운영 서버는 [`auto_pull.sh`](./dashboard/scripts/auto_pull.sh) cron(5분) | 없음 |
+
+<details>
+<summary>왜 <b>인라인 + sweep</b> 이중 장치인가? (GitHub 트리거 제약 우회)</summary>
+
+`analyzer.yml`은 기본 `GITHUB_TOKEN`으로 PR을 생성합니다. GitHub 정책상 **기본 토큰이 만든 이벤트는
+`pull_request_target` 워크플로를 트리거하지 않으므로**, 이벤트 기반 리뷰어만으로는 analyzer PR이 영원히
+검토되지 않고 열린 채 남습니다. 이를 막기 위해 ①PR을 만든 **같은 잡에서 즉시 인라인 리뷰**하고,
+②혹시 누락된 PR까지 **예약 sweep**(매시 :17)이 훑어 처리합니다. 병합 방식은 저장소가 허용하는
+방법(현재 이 저장소는 `rebase`)을 런타임에 자동 선택하므로 저장소 설정이 바뀌어도 깨지지 않습니다.
+</details>
 
 ---
 
@@ -160,7 +209,7 @@ python -m src.run apply  proposals/changeset_<stamp>.json
 
 ## 🔄 데이터 흐름 (Data Flow)
 
-`analyzer`는 기존의 **수동 분석·정리 단계를 자동화**합니다. 단, 소송 데이터는 법적 민감 정보이므로 정본 CSV 반영 여부는 **항상 사람이 PR 검토로 결정**합니다 (*Human-in-the-Loop*).
+`analyzer`는 기존의 **수동 분석·정리 단계를 자동화**합니다. 소송 데이터는 법적 민감 정보이므로 사람의 판단을 없애는 대신, 정본 보존·스키마·건수·출처 추적성 등 **안전 기준을 코드로 못박아 자동 집행**합니다. 모든 기준을 통과한 변경만 정본 CSV에 자동 반영되고, 하나라도 어긋나면 사유를 남기고 자동 반려됩니다 (*정책은 사람이 정하고, 집행은 기계가 하는 자동 루프*).
 
 ```mermaid
 sequenceDiagram
@@ -169,7 +218,7 @@ sequenceDiagram
     participant T as 📡 tracker
     participant GI as 🐙 GitHub Issue
     participant A as 🧪 analyzer
-    participant H as 👤 검토자
+    participant R as ✅ 자동 리뷰어 (기계 검증)
     participant CSV as 🗂️ 정본 CSV
     participant D as 📊 dashboard
 
@@ -177,16 +226,16 @@ sequenceDiagram
     T->>GI: 통합 리포트 발행
     GI->>A: 이슈 분석 (LLM 구조화)
     A->>A: 정본 CSV 대조 → NEW / UPDATE 분류
-    A->>H: 변경 제안 PR 자동 생성
-    alt merge = accept
-        H->>CSV: 승인분만 새 타임스탬프 버전으로 반영
-    else close = reject
-        H-->>A: 미반영
+    A->>R: 변경 제안 PR 자동 생성 → 즉시 자동 검토
+    alt 안전 기준 통과 → merge = accept
+        R->>CSV: 새 타임스탬프 버전으로 자동 반영
+    else 기준 위반 → close = reject
+        R-->>A: 사유 댓글 후 자동 반려
     end
     CSV->>D: CSV 기반 시각화·조회
 ```
 
-> **핵심 원칙**: *제안과 검증은 자동, 안전 기준을 통과한 변경만 자동 반영.* 빈 값은 덮어쓰지 않고(센싱 누락 보호), 변경 이력은 히스토리 컬럼에 누적하며, 정본 CSV는 덮어쓰지 않고 새 타임스탬프 버전으로 저장합니다. 보존·스키마·건수·추적성 검증을 모두 통과하면 merge하고, 하나라도 실패하면 사유를 댓글로 남기고 close합니다.
+> **핵심 원칙**: *제안·검증·반영이 모두 자동, 안전 기준을 통과한 변경만 반영.* 빈 값은 덮어쓰지 않고(센싱 누락 보호), 변경 이력은 히스토리 컬럼에 누적하며, 정본 CSV는 덮어쓰지 않고 새 타임스탬프 버전으로 저장합니다. 보존·스키마·건수·추적성 검증을 모두 통과하면 merge하고, 하나라도 실패하면 사유를 댓글로 남기고 close합니다.
 
 ---
 
@@ -223,7 +272,7 @@ sequenceDiagram
     CRON->>A: 매일 KST 10:00 실행
     A->>GI: 최근 이슈 리포트 수집·분석 (LLM 구조화)
     A->>A: 정본 CSV 대조 → NEW/UPDATE 변경 제안 PR 생성
-    Note over A,D: 👤 사람이 PR을 merge 하면 정본 CSV 반영 (HITL)
+    Note over A,D: 🤖 자동 리뷰어가 안전 기준 검증 → 통과 시 자동 merge (사람 개입 0)
     D->>D: 갱신된 CSV를 대시보드로 시각화 (localhost:8007, 로그인 필요)
 ```
 
@@ -274,7 +323,7 @@ tracker/
 
 자세한 내용은 [tracker/README.md](./tracker/README.md) 참고.
 
-### 2. [`analyzer/`](./analyzer) — 센싱→정리 자동화기 (사람 검토 기반)
+### 2. [`analyzer/`](./analyzer) — 센싱→정리 자동화기 (기계 검증 기반 무인 반영)
 
 `tracker`가 GitHub Issue로 보고한 소송 내용을 분석하여, 기존 정본 CSV(`dashboard/data/*.csv`)와 대조하고 **신규 추가 / 기존 레코드 업데이트** 변경 제안을 생성합니다. PR 반영 판정도 일관된 기계적 안전 기준으로 자동화됩니다.
 
@@ -406,7 +455,7 @@ Google은 정확한 무료 RPD(일일 요청 수)를 더 이상 공개 문서에
 ```
 ai-suit-sensing/
 ├── tracker/        # 소송 센싱 도구 (CourtListener/RECAP & News Extractor)
-├── analyzer/   # TBA: 센싱→정리 자동화기 (사람 검토 기반, PR 워크플로우)
+├── analyzer/   # 센싱→정리 자동화기 (기계 검증 기반 무인 반영, PR 워크플로우)
 ├── dashboard/      # 소송 현황 대시보드 (AI Litigation Dashboard)
 │   └── scripts/    #  ├ build_pages.py     : 정적 사이트 빌더 (docs/ 생성)
 │                   #  └ generate_reports.py: Gemini 월간 보고서 사전 생성
