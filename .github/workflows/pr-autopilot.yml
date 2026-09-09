@@ -66,7 +66,11 @@ jobs:
           fi
           # 4) 자동 승인(자기 PR 등으로 불가하면 무시) 후 자동 병합
           gh pr review "$PR" -R "$REPO" --approve --body "자동 정책에 따라 승인합니다.${FOOTER}" || echo "approve skipped (self-authored or not permitted)"
-          if gh pr merge "$PR" -R "$REPO" --squash --delete-branch; then
+          # 저장소가 허용하는 병합 방식을 골라 사용(merge/squash/rebase 설정이 제각각).
+          # 이 저장소는 rebase 만 허용 → --squash 고정 시 405 로 실패한다.
+          MM=$(gh api "repos/$REPO" --jq 'if .allow_squash_merge then "--squash" elif .allow_rebase_merge then "--rebase" elif .allow_merge_commit then "--merge" else "--merge" end')
+          echo "merge method: $MM"
+          if gh pr merge "$PR" -R "$REPO" $MM --delete-branch; then
             echo "merged"
           else
             # 신뢰 PR이지만 병합 실패(브랜치 보호/필수 체크 미통과 등)는 작업을 버리지 않고

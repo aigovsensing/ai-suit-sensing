@@ -178,6 +178,28 @@ class GitHub:
         return base64.b64decode(data["content"])
 
 
+def _allowed_merge_method(gh: "GitHub") -> str:
+    """Pick a merge method the repository actually permits.
+
+    Merge/squash/rebase are each toggleable per repo (this one allows only
+    rebase — merge commits and squash both return HTTP 405). GitHub guarantees
+    at least one is enabled, so read the settings and choose rather than
+    hardcoding a method that can start failing when settings change.
+    """
+    try:
+        repo = gh.request("GET", "")  # GET /repos/{owner}/{repo}
+    except RuntimeError:
+        return "merge"
+    for method, flag in (
+        ("squash", "allow_squash_merge"),
+        ("rebase", "allow_rebase_merge"),
+        ("merge", "allow_merge_commit"),
+    ):
+        if repo.get(flag):
+            return method
+    return "merge"
+
+
 def _review_pr_object(pr: dict[str, Any], repo: str, token: str, gh: GitHub | None = None) -> ReviewResult:
     """Validate one PR object (as returned by the GitHub API) and act on it.
 
@@ -211,12 +233,12 @@ def _review_pr_object(pr: dict[str, Any], repo: str, token: str, gh: GitHub | No
 
     gh.request("POST", f"/issues/{number}/comments", {"body": result.markdown()})
     if result.accepted:
-        # 이 저장소는 'merge commit'을 금지(squash 전용)한다. merge_method="merge"
-        # 로는 405(Merge commits are not allowed)로 실패하므로 squash 로 병합한다.
-        gh.request("PUT", f"/pulls/{number}/merge", {
-            "merge_method": "squash", "sha": pr["head"]["sha"],
-            "commit_title": f"data: auto-accept lawsuit dataset proposal #{number}",
-        })
+        method = _allowed_merge_method(gh)
+        payload: dict[str, Any] = {"merge_method": method, "sha": pr["head"]["sha"]}
+        # rebase 병합에는 별도 병합 커밋이 없어 commit_title 이 의미 없다.
+        if method in ("squash", "merge"):
+            payload["commit_title"] = f"data: auto-accept lawsuit dataset proposal #{number}"
+        gh.request("PUT", f"/pulls/{number}/merge", payload)
     else:
         gh.request("PATCH", f"/pulls/{number}", {"state": "closed"})
     return result
