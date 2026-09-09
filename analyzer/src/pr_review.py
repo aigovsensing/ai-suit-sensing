@@ -192,7 +192,10 @@ def _review_pr_object(pr: dict[str, Any], repo: str, token: str, gh: GitHub | No
 
     # Find the latest canonical CSV in the trusted base commit tree.
     tree = gh.request("GET", f"/git/trees/{pr['base']['sha']}?recursive=1")["tree"]
-    bases = sorted(x for x in tree if DATA_RE.fullmatch(x["path"]) and x["type"] == "blob")
+    bases = sorted(
+        (x for x in tree if DATA_RE.fullmatch(x["path"]) and x["type"] == "blob"),
+        key=lambda x: x["path"],
+    )
     with tempfile.TemporaryDirectory() as tmp:
         base_path = Path(tmp, "base.csv")
         candidate_path = Path(tmp, "candidate.csv")
