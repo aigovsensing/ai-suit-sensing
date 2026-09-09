@@ -178,11 +178,15 @@ class GitHub:
         return base64.b64decode(data["content"])
 
 
-def review_github_pr(event_path: str, repo: str, token: str) -> ReviewResult:
-    event = json.loads(Path(event_path).read_text(encoding="utf-8"))
-    pr = event["pull_request"]
+def _review_pr_object(pr: dict[str, Any], repo: str, token: str, gh: GitHub | None = None) -> ReviewResult:
+    """Validate one PR object (as returned by the GitHub API) and act on it.
+
+    The PR is commented with the machine verdict and then merged (accept) or
+    closed (reject).  Only trusted base-branch code runs here; PR blobs are
+    downloaded through the API and never executed.
+    """
     number = pr["number"]
-    gh = GitHub(repo, token)
+    gh = gh or GitHub(repo, token)
     files = gh.request("GET", f"/pulls/{number}/files?per_page=100")
     candidates = [f for f in files if DATA_RE.fullmatch(f["filename"]) and f["status"] == "added"]
 
@@ -213,15 +217,74 @@ def review_github_pr(event_path: str, repo: str, token: str) -> ReviewResult:
     return result
 
 
+def review_github_pr(event_path: str, repo: str, token: str) -> ReviewResult:
+    """Review the PR carried by a ``pull_request``/``pull_request_target`` event."""
+    event = json.loads(Path(event_path).read_text(encoding="utf-8"))
+    return _review_pr_object(event["pull_request"], repo, token)
+
+
+def review_pr_number(number: int, repo: str, token: str) -> ReviewResult:
+    """Review a PR by number.
+
+    Used for inline review right after ``gh pr create`` and by the scheduled
+    sweep — both needed because a PR opened by the default ``GITHUB_TOKEN`` does
+    not trigger ``pull_request_target`` workflows, so the event path never fires
+    for analyzer proposals and they would otherwise stay open forever.
+    """
+    gh = GitHub(repo, token)
+    pr = gh.request("GET", f"/pulls/{number}")
+    return _review_pr_object(pr, repo, token, gh=gh)
+
+
+def sweep(repo: str, token: str) -> int:
+    """Review every open analyzer proposal PR that no event ever processed.
+
+    Returns the number of PRs acted on.  Safety net for proposals created by the
+    default ``GITHUB_TOKEN`` (which never trigger the event-driven reviewer).
+    """
+    gh = GitHub(repo, token)
+    open_prs = gh.request("GET", "/pulls?state=open&per_page=100") or []
+    acted = 0
+    for pr in open_prs:
+        if pr.get("draft"):
+            continue
+        if not TITLE_RE.fullmatch((pr.get("title") or "").strip()):
+            continue
+        number = pr["number"]
+        try:
+            result = _review_pr_object(pr, repo, token, gh=gh)
+        except RuntimeError as exc:
+            print(f"PR #{number}: 처리 실패(스킵) — {exc}")
+            continue
+        verdict = "ACCEPT/MERGE" if result.accepted else "REJECT/CLOSE"
+        print(f"PR #{number}: {verdict}")
+        acted += 1
+    print(f"sweep 완료: {acted}건 처리")
+    return acted
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--event", default=os.getenv("GITHUB_EVENT_PATH"))
     parser.add_argument("--repo", default=os.getenv("GITHUB_REPOSITORY"))
+    parser.add_argument("--pr", type=int, default=None,
+                        help="특정 PR 번호를 직접 검토(이벤트 없이 인라인/수동 처리)")
+    parser.add_argument("--sweep", action="store_true",
+                        help="열린 analyzer 제안 PR 전체를 훑어 검토·병합/닫기")
     args = parser.parse_args()
     token = os.getenv("GITHUB_TOKEN", "")
-    if not args.event or not args.repo or not token:
-        parser.error("--event, --repo and GITHUB_TOKEN are required")
-    result = review_github_pr(args.event, args.repo, token)
+    if not args.repo or not token:
+        parser.error("--repo and GITHUB_TOKEN are required")
+
+    if args.sweep:
+        sweep(args.repo, token)
+        return 0
+    if args.pr is not None:
+        result = review_pr_number(args.pr, args.repo, token)
+    else:
+        if not args.event:
+            parser.error("--event, --pr 또는 --sweep 중 하나가 필요합니다")
+        result = review_github_pr(args.event, args.repo, token)
     print(result.markdown())
     return 0 if result.accepted else 1
 

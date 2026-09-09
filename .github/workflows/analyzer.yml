@@ -84,5 +84,21 @@ jobs:
             --base main --head "$BRANCH" \
             --label "analyzer")
           echo "PR: $PR_URL"
+          echo "min_confidence=${MINC}, analyzer_threshold=${THR}"
 
-          echo "자동 리뷰 대기: min_confidence=${MINC}, analyzer_threshold=${THR}"
+          # PR 번호를 워크플로 출력으로 넘겨 다음 스텝에서 인라인 리뷰한다.
+          PR_NUM="${PR_URL##*/}"
+          echo "pr_number=${PR_NUM}" >> "$GITHUB_OUTPUT"
+        id: create_pr
+
+      # ⚠️ 기본 GITHUB_TOKEN 으로 만든 PR 은 pull_request_target 이벤트를 트리거하지
+      #    않는다(GitHub 정책). 따라서 review-lawsuit-data-pr.yml 이 이 PR 에는
+      #    절대 실행되지 않는다 → 여기서 같은 잡 안에서 즉시(인라인) 검토·병합/닫기 한다.
+      #    (예약 sweep 워크플로가 혹시 누락된 건까지 추가로 보증한다.)
+      - name: Review freshly created PR inline (event won't fire for token PRs)
+        if: steps.create_pr.outputs.pr_number != ''
+        working-directory: ${{ github.workspace }}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python -m analyzer.src.pr_review --pr "${{ steps.create_pr.outputs.pr_number }}"

@@ -1,0 +1,51 @@
+name: analyzer PR sweep (review & merge/close)
+
+# 왜 필요한가:
+#   analyzer.yml 은 기본 GITHUB_TOKEN 으로 PR 을 생성한다. GitHub 정책상
+#   기본 토큰이 만든 이벤트는 pull_request_target/pull_request 워크플로를
+#   트리거하지 않으므로, review-lawsuit-data-pr.yml(도메인 리뷰어)가 해당 PR 에
+#   대해 영원히 실행되지 않는다 → PR 이 승인/병합도, 거절/닫기도 되지 않고 계속
+#   살아 있게 된다(예: #159).
+#
+# 이 워크플로는 그 사각지대를 메우는 '청소(sweep)' 안전망이다. 예약 실행(및 수동
+#   dispatch)으로 열려 있는 '소송 데이터 갱신 제안'(analyzer) PR 을 모두 훑어,
+#   도메인 리뷰어와 동일한 기계 검증으로 통과 시 병합, 실패 시 사유를 남기고 닫는다.
+#   analyzer.yml 의 인라인 리뷰가 정상 동작하면 이 sweep 은 보통 0건을 처리한다.
+#
+# pull_request_target 이 아니라 schedule/workflow_dispatch 로 실행하므로, 항상
+#   신뢰된 main 브랜치의 리뷰어 코드만 돌린다(PR 코드는 API 로 blob 만 받아 검증).
+
+on:
+  schedule:
+    # 정각(minute 0)은 Actions 지연·누락이 잦아 피한다. 매시 :17 에 훑는다.
+    - cron: "17 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: analyzer-pr-sweep
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout trusted reviewer from main
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Sweep open analyzer proposal PRs
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python -m analyzer.src.pr_review --sweep
