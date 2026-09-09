@@ -211,8 +211,10 @@ def _review_pr_object(pr: dict[str, Any], repo: str, token: str, gh: GitHub | No
 
     gh.request("POST", f"/issues/{number}/comments", {"body": result.markdown()})
     if result.accepted:
+        # 이 저장소는 'merge commit'을 금지(squash 전용)한다. merge_method="merge"
+        # 로는 405(Merge commits are not allowed)로 실패하므로 squash 로 병합한다.
         gh.request("PUT", f"/pulls/{number}/merge", {
-            "merge_method": "merge", "sha": pr["head"]["sha"],
+            "merge_method": "squash", "sha": pr["head"]["sha"],
             "commit_title": f"data: auto-accept lawsuit dataset proposal #{number}",
         })
     else:
