@@ -148,3 +148,14 @@ class GenericDatasetPhraseTest(unittest.TestCase):
     def test_keeps_named_datasets(self):
         names = extract_dataset_names("They used the Stanford Cars Dataset and the LJ Speech Dataset.")
         self.assertEqual(names, ["Stanford Cars Dataset", "LJ Speech Dataset"])
+
+
+class DatasetNameNormalizationTest(unittest.TestCase):
+    def test_caption_noise_before_known_name_is_dropped(self):
+        self.assertEqual(extract_dataset_names("N.D. Cal The Books3 dataset was used."), ["Books3"])
+
+    def test_slimpajama_is_canonical(self):
+        self.assertEqual(extract_dataset_names("trained on the SlimPajama dataset"), ["SlimPajama"])
+
+    def test_lowercase_suffix_is_normalized(self):
+        self.assertEqual(extract_dataset_names("the Acme Lyrics dataset"), ["Acme Lyrics Dataset"])

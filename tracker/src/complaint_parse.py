@@ -12,6 +12,7 @@ KNOWN_DATASETS = (
     ("Common Crawl", re.compile(r"\bcommon\s+crawl\b", re.I)),
     ("C4", re.compile(r"\b(?:the\s+)?c4\s+dataset\b", re.I)),
     ("RedPajama", re.compile(r"\bred\s*pajama\b", re.I)),
+    ("SlimPajama", re.compile(r"\bslim\s*pajama\b", re.I)),
     ("BookCorpus", re.compile(r"\bbook\s*corpus(?:\s*2)?\b", re.I)),
     ("OpenWebText", re.compile(r"\bopen\s*web\s*text(?:\s*2)?\b", re.I)),
     ("WebText", re.compile(r"\bweb\s*text\b", re.I)),
@@ -34,6 +35,7 @@ DATASET_URLS = {
     "LAION-400M": "https://laion.ai/blog/laion-400-open-dataset/",
     "Common Crawl": "https://commoncrawl.org/",
     "RedPajama": "https://github.com/togethercomputer/RedPajama-Data",
+    "SlimPajama": "https://huggingface.co/datasets/cerebras/SlimPajama-627B",
     "BookCorpus": "https://huggingface.co/datasets/bookcorpus/bookcorpus",
     "OpenWebText": "https://skylion007.github.io/OpenWebTextCorpus/",
     "Project Gutenberg": "https://www.gutenberg.org/",
@@ -124,10 +126,13 @@ def extract_dataset_names(text: str) -> List[str]:
     ignored = {"the dataset", "a dataset", "training dataset", "source dataset", "image dataset", "text dataset"}
     for match in generic.finditer(text):
         name = re.sub(r"\s+", " ", match.group(1)).strip()
-        name = re.sub(r"data\s+set$", "Dataset", name, flags=re.I)
-        name = re.sub(r"^(?:The|A)\s+", "", name)
+        # 접미사 표기 통일("dataset", "data set", "Data-Set" → "Dataset")
+        name = re.sub(r"\s*data[\s-]?set$", " Dataset", name, flags=re.I)
+        # 관사 앞의 캡션/법원명 등 잡음 제거: "N.D. Cal The Books3 dataset" → "Books3 Dataset"
+        name = re.split(r"\b(?:The|A)\s+", name)[-1]
         base_name = re.sub(r"\s+Dataset$", "", name, flags=re.I)
-        duplicates_known_name = any(base_name.casefold() == item.casefold() for item in found)
+        # 이미 식별된 이름을 포함하면 같은 데이터셋의 다른 표기로 본다.
+        duplicates_known_name = any(item.casefold() in base_name.casefold() for item in found)
         # "Clean Dataset", "Licensed Dataset", "55,600-Track Dataset"처럼 수식어만으로
         # 이뤄진 표현은 특정 데이터셋 이름이 아니므로 제외한다.
         only_generic_words = all(w.strip(".,;:").casefold() in _GENERIC_DATASET_WORDS for w in base_name.split())
