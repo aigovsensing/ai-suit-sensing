@@ -70,3 +70,31 @@ class DatasetCatalogTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RecordDatasetCatalogTest(unittest.TestCase):
+    def test_record_appends_new_dataset_to_existing_catalog(self):
+        import os
+        from unittest import mock
+        from src.dataset_status import record_dataset_catalog
+
+        with TemporaryDirectory() as tmp:
+            path = Path(tmp) / "catalog.csv"
+            upsert_dataset_catalog({"books3": {"name": "Books3", "cases": [("A v. B", "")], "evidence": []}},
+                                   path, now="2026-09-01T00:00:00+00:00")
+            hits = [{"docket_id": 7, "caseName": "Artists v. Gen Corp.",
+                     "docket_absolute_url": "/docket/7/x/",
+                     "snippet": "Defendant trained its model on the LAION-5B dataset."}]
+            with mock.patch.dict(os.environ, {"DATASET_CATALOG_PATH": str(path)}):
+                self.assertEqual(record_dataset_catalog(hits, []), 1)
+
+            names = [row["dataset_name"] for row in catalog_as_json(path)]
+            self.assertEqual(sorted(names), ["Books3", "LAION-5B"])
+
+    def test_record_is_noop_without_catalog_path(self):
+        import os
+        from unittest import mock
+        from src.dataset_status import record_dataset_catalog
+
+        with mock.patch.dict(os.environ, {"DATASET_CATALOG_PATH": ""}):
+            self.assertEqual(record_dataset_catalog([{"snippet": "Books3"}], []), 1)

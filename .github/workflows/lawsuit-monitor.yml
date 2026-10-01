@@ -101,7 +101,12 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add docs/img/daily_visual_report.png data/risky-open-datasets.csv || true
+          # 경로를 한 번에 git add 하면 하나라도 없을 때(이미지 생성 비활성 시
+          # daily_visual_report.png 미생성) 전체가 실패해 카탈로그 CSV까지 누락된다.
+          # 존재하는 파일만 개별로 추가한다.
+          for f in docs/img/daily_visual_report.png data/risky-open-datasets.csv; do
+            if [ -e "$f" ]; then git add -- "$f"; fi
+          done
           # Do not use [skip ci]: a catalog change must trigger pages.yml so the
           # public dataset board receives newly collected observations.
           if git diff --cached --quiet; then

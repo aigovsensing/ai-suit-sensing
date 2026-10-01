@@ -209,6 +209,21 @@ def _persist_if_configured(agg: Dict[str, dict]) -> None:
     upsert_dataset_catalog(agg, path)
 
 
+def record_dataset_catalog(
+    hits: Optional[List[dict]], documents: Optional[Sequence[object]] = None
+) -> int:
+    """리포트 발행 여부와 무관하게 매 수집 실행마다 카탈로그를 갱신한다.
+
+    조간/석간 리포트는 하루 1~2회, Gemini 요약 성공 시에만 조립되므로 그 경로에만
+    저장을 맡기면 새 소장에서 식별된 데이터셋이 누락된다. 반환값은 이번 실행에서
+    식별된 데이터셋 수.
+    """
+    agg = _aggregate_from_documents(documents)
+    _merge_aggregates(agg, _aggregate_from_hits(hits))
+    _persist_if_configured(agg)
+    return len(agg)
+
+
 def _render_evidence(evidence: List[tuple]) -> str:
     """소장 링크를 우선해 서로 다른 출처를 최대 3개까지 표시한다."""
     ordered = sorted(

@@ -100,6 +100,14 @@ def main() -> None:
     from .dataset_status import enrich_hits_with_complaint_documents
     hits = enrich_hits_with_complaint_documents(hits, cl_docs)
 
+    # 데이터셋 카탈로그(웹 대시보드 '데이터셋 현황')는 리포트 발행과 분리해 매 실행 갱신한다.
+    try:
+        from .dataset_status import record_dataset_catalog
+        n = record_dataset_catalog(hits, cl_docs)
+        debug_log(f"데이터셋 카탈로그 갱신: 이번 실행 식별 {n}종")
+    except Exception as e:
+        debug_log(f"데이터셋 카탈로그 갱신 실패(무시): {e}")
+
     docket_case_count = len(cl_cases)
     
     # =====================================================
