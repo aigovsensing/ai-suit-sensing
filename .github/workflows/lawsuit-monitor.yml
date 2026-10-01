@@ -107,8 +107,8 @@ jobs:
           for f in docs/img/daily_visual_report.png data/risky-open-datasets.csv; do
             if [ -e "$f" ]; then git add -- "$f"; fi
           done
-          # Do not use [skip ci]: a catalog change must trigger pages.yml so the
-          # public dataset board receives newly collected observations.
+          # GITHUB_TOKEN push 는 pages.yml 의 push 트리거를 발생시키지 않는다.
+          # 배포는 pages.yml 의 workflow_run(본 워크플로 완료) 트리거가 담당한다.
           if git diff --cached --quiet; then
             echo "No changes to commit"
           else
