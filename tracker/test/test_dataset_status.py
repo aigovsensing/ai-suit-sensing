@@ -137,3 +137,14 @@ class DatasetStatusTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GenericDatasetPhraseTest(unittest.TestCase):
+    def test_ignores_descriptive_phrases_seen_in_reports(self):
+        text = ("Building a Clean Dataset. GEMA launches a fully licensed dataset. "
+                "Suno used a 55,600-Track Dataset. Provenanced Dataset. Open Dataset. Pirated Datasets.")
+        self.assertEqual(extract_dataset_names(text), [])
+
+    def test_keeps_named_datasets(self):
+        names = extract_dataset_names("They used the Stanford Cars Dataset and the LJ Speech Dataset.")
+        self.assertEqual(names, ["Stanford Cars Dataset", "LJ Speech Dataset"])

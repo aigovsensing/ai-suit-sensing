@@ -96,6 +96,17 @@ def extract_ai_training_snippet(text: str, max_len: int = 280) -> str:
     return (sn[:max_len] + "…") if len(sn) > max_len else sn
 
 
+# 일반 "X Dataset" 표기에서 X가 이 단어들로만 이뤄지면 고유명이 아닌 수식어로 본다.
+_GENERIC_DATASET_WORDS = {
+    "clean", "licensed", "unlicensed", "open", "public", "private", "proprietary",
+    "pirated", "illegal", "unauthorized", "provenanced", "curated", "custom",
+    "new", "large", "massive", "huge", "entire", "original", "full", "whole",
+    "training", "test", "evaluation", "source", "raw", "internal", "synthetic",
+    "image", "text", "audio", "video", "music", "song", "track", "book", "books",
+    "this", "that", "such", "our", "its", "their", "his", "her", "dataset", "datasets",
+}
+
+
 def extract_dataset_names(text: str) -> List[str]:
     """소장 텍스트에서 명시적으로 이름이 언급된 데이터셋만 반환한다."""
     text = html.unescape(re.sub(r"<[^>]+>", " ", text or ""))
@@ -117,8 +128,12 @@ def extract_dataset_names(text: str) -> List[str]:
         name = re.sub(r"^(?:The|A)\s+", "", name)
         base_name = re.sub(r"\s+Dataset$", "", name, flags=re.I)
         duplicates_known_name = any(base_name.casefold() == item.casefold() for item in found)
+        # "Clean Dataset", "Licensed Dataset", "55,600-Track Dataset"처럼 수식어만으로
+        # 이뤄진 표현은 특정 데이터셋 이름이 아니므로 제외한다.
+        only_generic_words = all(w.strip(".,;:").casefold() in _GENERIC_DATASET_WORDS for w in base_name.split())
         if (
             name.casefold() not in ignored
+            and not only_generic_words
             and not duplicates_known_name
             and not any(name.casefold() == item.casefold() for item in found)
         ):
