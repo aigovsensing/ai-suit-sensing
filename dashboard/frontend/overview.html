@@ -114,6 +114,23 @@ body { margin: 0; background: var(--bg); color: var(--text);
 .legend .sw { width: 22px; height: 12px; border-radius: 3px; }
 .legend .pct { color: var(--muted); margin-left: 4px; }
 
+/* 도넛 하단: 자동 생성 그래프 요약·시사점 */
+.donut-insight { width: 100%; margin-top: 16px; border-top: 1px dashed var(--border);
+                 padding-top: 14px; font-size: 12.5px; line-height: 1.65; }
+.donut-insight .di-sum { margin: 0 0 10px; color: var(--muted); }
+.donut-insight .di-sum b { color: var(--text); }
+.donut-insight .di-h { font-weight: 700; margin: 12px 0 6px; }
+.donut-insight ul { margin: 0; padding: 0; list-style: none; display: flex;
+                    flex-direction: column; gap: 6px; }
+.donut-insight li { display: flex; gap: 8px; align-items: baseline; }
+.donut-insight li .k { color: var(--muted); min-width: 150px; flex-shrink: 0; }
+.donut-insight li .v { color: var(--text); }
+.donut-insight li .v b { color: var(--text); }
+.donut-insight .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.donut-insight .chip { background: var(--input-bg); border: 1px solid var(--border);
+                       border-radius: 999px; padding: 2px 10px; font-size: 11.5px; white-space: nowrap; }
+.donut-insight .di-note { margin: 12px 0 0; font-size: 11.5px; color: var(--muted); }
+
 /* 소송 목록 테이블 */
 .toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
 .toolbar input, .toolbar select { border: 1px solid var(--border); border-radius: 8px;
@@ -223,6 +240,7 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
       <div class="card"><h2>🌏 국가별 소송 현황</h2><div class="geo" id="geoCards"></div></div>
       <div class="card"><h2>📁 대상 데이터 유형별 분포</h2>
         <div class="donut-wrap"><div class="donut" id="donut"></div><div class="legend" id="donutLegend"></div></div>
+        <div class="donut-insight" id="donutInsight"></div>
       </div>
     </div>
 
@@ -528,7 +546,8 @@ function classifyTarget(r) {
 }
 function renderDonut() {
   const m = {};
-  ALL.forEach(r => { const k = classifyTarget(r); m[k] = (m[k]||0)+1; });
+  const etcRows = [];
+  ALL.forEach(r => { const k = classifyTarget(r); m[k] = (m[k]||0)+1; if (k === "기타") etcRows.push(r); });
   const list = Object.entries(m).sort((a,b) => b[1]-a[1]);
   const total = ALL.length || 1;
   let acc = 0; const segs = [];
@@ -543,6 +562,62 @@ function renderDonut() {
   document.getElementById("donutLegend").innerHTML = list.map(([label,n],i) =>
     `<div class="li"><span class="sw" style="background:${DONUT_COLORS[i%DONUT_COLORS.length]}"></span>` +
     `${esc(label)} <b>${n}</b><span class="pct">(${Math.round(n/total*100)}%)</span></div>`).join("");
+  renderDonutInsight(list, total, etcRows);
+}
+
+/* 대상 데이터 원문이 유형 미상(미기재/Other 등)인지 판정 */
+const UNSPEC_TARGET = new Set(["", "other", "others", "unknown", "n/a", "na", "none", "-", ".",
+  "미상", "미확인", "미기재", "기타", "불명", "확인불가"]);
+
+/* 도넛 아래: 분포 요약 + '기타' 세부 구성 자동 분석 */
+function renderDonutInsight(list, total, etcRows) {
+  const el = document.getElementById("donutInsight");
+  if (!el) return;
+  const pct = n => Math.round(n/total*100);
+  const realTypes = list.filter(([l]) => l !== "기타");
+  const etcEntry = list.find(([l]) => l === "기타");
+  const etcN = etcEntry ? etcEntry[1] : 0;
+
+  // '기타' 세부 분해: 원자료 미기재/Other vs 유형이 적혔으나 6개 키워드 밖
+  let unspec = 0; const freq = {};
+  etcRows.forEach(r => {
+    const raw = String(r.target_data || "").trim();
+    if (UNSPEC_TARGET.has(raw.toLowerCase())) { unspec++; return; }
+    const key = raw.length > 46 ? raw.slice(0, 46) + "…" : raw;
+    freq[key] = (freq[key]||0) + 1;
+  });
+  const specific = etcN - unspec;
+  const topSpecific = Object.entries(freq).sort((a,b) => b[1]-a[1]).slice(0, 8);
+
+  const realTop3 = realTypes.slice(0, 3)
+    .map(([l,n]) => `${esc(l)} ${n}건(${pct(n)}%)`).join(" · ") || "—";
+
+  // 1) 전체 분포 한줄 요약 + 시사점
+  let html = `<p class="di-sum">전체 <b>${total}건</b> 기준, 실질 데이터 유형 1~3위는 <b>${realTop3}</b> 입니다. ` +
+    `텍스트(도서·뉴스)·음악·이미지·영상·코드 전반에 걸쳐 분쟁이 확산되어, 학습데이터 저작권 리스크가 특정 매체에 ` +
+    `국한되지 않음을 보여줍니다. 다만 가장 큰 조각인 <b>‘기타’ ${etcN}건(${pct(etcN)}%)</b> 은 단일 유형이 아니라 ` +
+    `아래와 같이 ‘유형 미상’과 ‘6개 키워드 밖의 실제 유형’이 섞인 묶음입니다.</p>`;
+
+  // 2) '기타' 세부 구성
+  html += `<div class="di-h">🔍 ‘기타 ${etcN}건(${pct(etcN)}%)’ 세부 구성</div><ul>`;
+  const etcPct = n => etcN ? Math.round(n/etcN*100) : 0;
+  html += `<li><span class="k">① 유형 미상·미기재</span><span class="v"><b>${unspec}건</b> ` +
+    `(기타의 ${etcPct(unspec)}%) — 원자료의 ‘대상 데이터’가 <b>‘Other’ 또는 공란</b>으로만 적혀 유형을 특정할 수 없는 건</span></li>`;
+  html += `<li><span class="k">② 유형은 명시(키워드 밖)</span><span class="v"><b>${specific}건</b> ` +
+    `(기타의 ${etcPct(specific)}%) — 구체 유형이 적혔으나 6개 분류 키워드에 안 걸리는 건. 주요 예:</span></li>`;
+  html += `</ul>`;
+  if (topSpecific.length) {
+    html += `<div class="chips">` + topSpecific.map(([k,c]) =>
+      `<span class="chip">${esc(k)}${c > 1 ? ` ×${c}` : ""}</span>`).join("") + `</div>`;
+  }
+
+  // 3) 시사점 각주
+  html += `<p class="di-note">※ ‘기타’의 약 <b>${etcPct(unspec)}%</b>가 원자료 미기재(‘Other’·공란)여서, ` +
+    `실제 비중이 아니라 <b>수집 단계의 ‘대상 데이터’ 입력 공백</b>이 큽니다. 또한 ②의 웹 크롤링 코퍼스(Common Crawl·WebText 등)·` +
+    `3D 모델 데이터셋(Objaverse-XL 등)·출판물 집합(LibGen·Publishers)·영업비밀/특허 등은 현재 6개 유형 밖이라, ` +
+    `분류 키워드 보강과 수집 정규화가 필요함을 시사합니다.</p>`;
+
+  el.innerHTML = html;
 }
 
 /* 전체 소송 목록 (검색/필터 + 게시판 페이지네이션) */
@@ -674,7 +749,7 @@ function renderInsights() {
     String(r.defendant||"").split(/[,;·]/).forEach(d => { d=d.trim(); if(d && d.toLowerCase()!=="unknown") m[d]=(m[d]||0)+1; });
     return m; }, {})).sort((a,b)=>b[1]-a[1])[0] || ["—",0];
   const typeTop = Object.entries(ALL.reduce((m,r)=>{const k=classifyTarget(r);m[k]=(m[k]||0)+1;return m;},{}))
-    .sort((a,b)=>b[1]-a[1])[0] || ["—",0];
+    .filter(([l])=>l!=="기타").sort((a,b)=>b[1]-a[1])[0] || ["—",0];
   const latest = [...ALL].filter(r=>r._d).sort((a,b)=>b._d-a._d)[0];
   const usShare = Math.round(ALL.filter(r=>r.country==="미국").length / (ALL.length||1) * 100);
   // 전년 동기간(YTD) 비교 — KPI 카드와 동일 기준
@@ -686,7 +761,7 @@ function renderInsights() {
   const items = [
     ["⚖️","소송 추이", `${yPrev}년 ${byYear[yPrev]||0}건 → ${yLast}년 ${byYear[yLast]||0}건(집계 중) 제기.${ytdTxt} 전체 누적 ${ALL.length}건에 도달했습니다.`],
     ["🎯","최다 피소 기업", `${defTop[0]} (${defTop[1]}건)이 가장 많은 소송에 피소되었습니다. 생성형 AI 선두 기업에 소송이 집중되는 양상입니다.`],
-    ["📁","주요 분쟁 데이터", `대상 데이터 유형 중 '${typeTop[0]}'(${typeTop[1]}건)이 최다입니다. 미국 소송 비중은 ${usShare}%로 미국 법원 판례가 글로벌 기준점 역할을 하고 있습니다.`],
+    ["📁","주요 분쟁 데이터", `실질 데이터 유형 중 '${typeTop[0]}'(${typeTop[1]}건)이 가장 많습니다(미분류 '기타' 제외). 미국 소송 비중은 ${usShare}%로 미국 법원 판례가 글로벌 기준점 역할을 하고 있습니다.`],
     ["🕐","최신 동향", latest ? `가장 최근 소송은 ${fmtDate(latest._d)} 제기된 「${latest.case_name}」(피고: ${latest.defendant}) 입니다. 상단 티커에서 최근 10건을 확인하세요.` : "최근 데이터 없음"],
   ];
   document.getElementById("insights").innerHTML = items.map(([ico,t,p]) =>
