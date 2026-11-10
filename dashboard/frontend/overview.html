@@ -206,34 +206,8 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
   <div id="loading">데이터 로딩 중…</div>
   <div id="board" style="display:none;">
 
-    <div class="card dataset-card">
-      <div class="dataset-head">
-        <div><h2>🧬 AI 소송 사건에 연관된 데이터셋 현황</h2>
-          <p>소장·기사에서 명시적으로 식별된 데이터셋을 이름별로 통합했습니다. 실제 사용 전 사건 근거와 라이선스를 확인하세요.</p></div>
-        <div><span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span></div>
-      </div>
-      <div class="export-tools export-panel" aria-label="데이터셋 현황 파일 저장">
-        <span class="export-label">⬇ 파일로 저장</span>
-        <button type="button" onclick="exportBoard('datasets','csv')">CSV 저장</button>
-        <button type="button" onclick="exportBoard('datasets','xlsx')">XLSX 저장</button>
-        <button type="button" onclick="exportBoard('datasets','docx')">DOCX 저장</button>
-        <button type="button" onclick="exportBoard('datasets','pdf')">PDF 저장</button>
-      </div>
-      <div class="toolbar">
-        <input id="datasetQ" type="search" placeholder="🔍 데이터셋 / 소송명 / 근거 검색...">
-        <select id="datasetPageSize" title="한 페이지 출력 건수">
-          <option value="5">5개씩</option><option value="10" selected>10개씩</option>
-          <option value="20">20개씩</option><option value="30">30개씩</option>
-          <option value="50">50개씩</option><option value="70">70개씩</option><option value="100">100개씩</option>
-        </select>
-        <span class="count" id="datasetCount"></span>
-      </div>
-      <div class="dataset-table-wrap"><table class="datasets">
-        <thead><tr><th>데이터셋</th><th>연관 소송 수</th><th>확인 근거</th><th>공식 링크</th><th>연관 소송</th></tr></thead>
-        <tbody id="datasetBody"></tbody>
-      </table></div>
-      <div class="pager" id="datasetPager"></div>
-    </div>
+    <div class="section-title">💡 핵심 인사이트 (데이터 자동 산출)</div>
+    <div class="insights" id="insights"></div>
 
     <div class="ticker"><div class="ticker-track" id="ticker"></div></div>
 
@@ -286,8 +260,34 @@ footer { text-align: center; font-size: 12px; color: var(--muted); margin-top: 3
       <div class="pager" id="pager"></div>
     </div>
 
-    <div class="section-title">💡 핵심 인사이트 (데이터 자동 산출)</div>
-    <div class="insights" id="insights"></div>
+    <div class="card dataset-card">
+      <div class="dataset-head">
+        <div><h2>🧬 AI 소송 사건에 연관된 데이터셋 현황</h2>
+          <p>소장·기사에서 명시적으로 식별된 데이터셋을 이름별로 통합했습니다. 실제 사용 전 사건 근거와 라이선스를 확인하세요.</p></div>
+        <div><span class="risk-note">⚠️ 소송 연관은 위법 확정 판정을 의미하지 않습니다</span></div>
+      </div>
+      <div class="export-tools export-panel" aria-label="데이터셋 현황 파일 저장">
+        <span class="export-label">⬇ 파일로 저장</span>
+        <button type="button" onclick="exportBoard('datasets','csv')">CSV 저장</button>
+        <button type="button" onclick="exportBoard('datasets','xlsx')">XLSX 저장</button>
+        <button type="button" onclick="exportBoard('datasets','docx')">DOCX 저장</button>
+        <button type="button" onclick="exportBoard('datasets','pdf')">PDF 저장</button>
+      </div>
+      <div class="toolbar">
+        <input id="datasetQ" type="search" placeholder="🔍 데이터셋 / 소송명 / 근거 검색...">
+        <select id="datasetPageSize" title="한 페이지 출력 건수">
+          <option value="5">5개씩</option><option value="10" selected>10개씩</option>
+          <option value="20">20개씩</option><option value="30">30개씩</option>
+          <option value="50">50개씩</option><option value="70">70개씩</option><option value="100">100개씩</option>
+        </select>
+        <span class="count" id="datasetCount"></span>
+      </div>
+      <div class="dataset-table-wrap"><table class="datasets">
+        <thead><tr><th>데이터셋</th><th>연관 소송 수</th><th>확인 근거</th><th>공식 링크</th><th>연관 소송</th></tr></thead>
+        <tbody id="datasetBody"></tbody>
+      </table></div>
+      <div class="pager" id="datasetPager"></div>
+    </div>
 
     <footer id="foot"></footer>
   </div>
